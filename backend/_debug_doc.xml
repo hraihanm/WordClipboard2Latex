@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+            xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
+            xmlns:v="urn:schemas-microsoft-com:vml"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:w10="urn:schemas-microsoft-com:office:word"
+            xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
+            xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
+            xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk"
+            xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml"
+            xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+            mc:Ignorable="w14 wp14">
+  <w:body>
+    <w:p>
+      <m:oMathPara><m:oMathParaPr><m:jc
+   m:val="left"/></m:oMathParaPr><m:oMath><m:r>m</m:r><m:r><m:rPr><m:scr m:val="roman"/><m:sty m:val="p"/></m:rPr>-</m:r><m:r>M</m:r><m:r><m:rPr><m:aln/><m:scr
+     m:val="roman"/><m:sty m:val="p"/></m:rPr>=-5+5</m:r><m:func><m:funcPr><m:ctrlPr></m:ctrlPr></m:funcPr><m:fName><m:sSub><m:sSubPr><m:ctrlPr></m:ctrlPr></m:sSubPr><m:e><m:r><m:rPr><m:scr m:val="roman"/><m:sty m:val="p"/></m:rPr>log</m:r></m:e><m:sub><m:r><m:rPr><m:scr m:val="roman"/><m:sty m:val="p"/></m:rPr>10</m:r></m:sub></m:sSub></m:fName><m:e><m:r>d</m:r></m:e></m:func></m:oMath><m:oMath><m:r>M</m:r><m:r><m:rPr><m:aln/><m:scr m:val="roman"/><m:sty
+     m:val="p"/></m:rPr>=</m:r><m:r>m</m:r><m:r><m:rPr><m:scr
+     m:val="roman"/><m:sty m:val="p"/></m:rPr>+5-5</m:r><m:func><m:funcPr><m:ctrlPr></m:ctrlPr></m:funcPr><m:fName><m:sSub><m:sSubPr><m:ctrlPr></m:ctrlPr></m:sSubPr><m:e><m:r><m:rPr><m:scr m:val="roman"/><m:sty m:val="p"/></m:rPr>log</m:r></m:e><m:sub><m:r><m:rPr><m:scr m:val="roman"/><m:sty m:val="p"/></m:rPr>10</m:r></m:sub></m:sSub></m:fName><m:e><m:r>d</m:r></m:e></m:func></m:oMath><m:oMath><m:r>M</m:r><m:r><m:rPr><m:aln/><m:scr m:val="roman"/><m:sty
+     m:val="p"/></m:rPr>=4.9+5-5</m:r><m:func><m:funcPr><m:ctrlPr></m:ctrlPr></m:funcPr><m:fName><m:sSub><m:sSubPr><m:ctrlPr></m:ctrlPr></m:sSubPr><m:e><m:r><m:rPr><m:scr m:val="roman"/><m:sty m:val="p"/></m:rPr>log</m:r></m:e><m:sub><m:r><m:rPr><m:scr m:val="roman"/><m:sty m:val="p"/></m:rPr>10</m:r></m:sub></m:sSub></m:fName><m:e><m:d><m:dPr><m:ctrlPr></m:ctrlPr></m:dPr><m:e><m:r><m:rPr><m:scr m:val="roman"/><m:sty m:val="p"/></m:rPr>15800</m:r></m:e></m:d></m:e></m:func></m:oMath><m:oMath><m:r>M</m:r><m:r><m:rPr><m:aln/><m:scr m:val="roman"/><m:sty
+     m:val="p"/></m:rPr>=-11.093.</m:r></m:oMath></m:oMathPara>
+
+    </w:p>
+  </w:body>
+</w:document>

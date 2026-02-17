@@ -1,0 +1,61 @@
+export interface ConvertResult {
+  latex: string;
+  markdown: string;
+  html: string;
+  warnings: string[];
+}
+
+export interface HealthResult {
+  status: string;
+  pandoc_installed: boolean;
+  pandoc_version: string | null;
+}
+
+export async function convertClipboard(): Promise<ConvertResult> {
+  const res = await fetch('/api/convert');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function convertText(html: string): Promise<ConvertResult> {
+  const res = await fetch('/api/convert/text', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ html }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function healthCheck(): Promise<HealthResult> {
+  const res = await fetch('/api/health');
+  return res.json();
+}
+
+export interface ClipboardFormat {
+  id: number;
+  name: string;
+}
+
+export interface ClipboardInfo {
+  formats: ClipboardFormat[];
+  has_html: boolean;
+  raw_html: string;
+  plain_text: string;
+  error?: string;
+}
+
+export async function clipboardInfo(): Promise<ClipboardInfo> {
+  const res = await fetch('/api/clipboard-info');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error: ${res.status}`);
+  }
+  return res.json();
+}
