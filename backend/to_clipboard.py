@@ -2,11 +2,34 @@
 
 Strategy
 --------
-1. Run Pandoc twice:
-   - ``→ rtf  --standalone``      : full RTF document, Word reads natively
-   - ``→ html  --mathml``         : HTML fragment with MathML; Word 2013+ renders it
-2. Both formats are written to the Windows clipboard so Word can pick the
-   richest format it understands.
+We write only CF_HTML (HTML Format) to the clipboard, using Pandoc's
+``--mathml`` flag.
+
+Why not CF_RTF?
+  Pandoc's RTF/OMML writer silently drops all LaTeX math-spacing commands
+  (``\ ``, ``\,``, ``\;``, ``\quad``, …) because OMML has no matching
+  primitive.  Any preprocessing trick (replacing ``\ `` with ``\text{ }``,
+  etc.) also fails because Pandoc then strips the leading space from
+  ``\text{}`` content when writing the OMML ``<m:t>`` element.
+
+Why CF_HTML with MathML?
+  Pandoc's MathML writer converts spacing commands correctly:
+    ``\ ``   → ``<mspace width="0.333em"/>``
+    ``\,``   → ``<mspace width="0.167em"/>``
+    ``\quad``→ ``<mspace width="1em"/>``
+  Word 2016+ (and Word 365) renders pasted MathML equations natively,
+  including the spacing.  Text formatting (headings, bold, italic, tables)
+  comes through via standard HTML elements that Word handles well.
+
+Math spacing pre-processing
+---------------------------
+Pandoc's MathML writer drops explicit spacing commands (``\ ``, ``\,``,
+``\quad``, …) placed immediately before ``\text{}`` and also strips leading
+spaces inside ``\text{ content}``.  Before calling Pandoc we rewrite these
+patterns by merging the space as a tilde (``~``) into the ``\text{}``
+argument.  In LaTeX text mode ``~`` is a non-breaking space (U+00A0), which
+Pandoc emits as ``&#160;`` in MathML — not XML whitespace, so it survives
+intact and Word renders it as a visible space.
 
 CF_HTML format spec
 -------------------
@@ -30,7 +53,6 @@ import subprocess
 
 import win32clipboard
 
-CF_RTF = win32clipboard.RegisterClipboardFormat("Rich Text Format")
 CF_HTML_FORMAT = win32clipboard.RegisterClipboardFormat("HTML Format")
 
 # Pandoc input format strings for each supported source format.
@@ -41,40 +63,47 @@ _PANDOC_INPUT: dict[str, str] = {
 
 
 # ── Math spacing pre-processor ────────────────────────────────────────────────
+#
+# Pandoc's MathML writer (--mathml) drops explicit spacing commands (\ , \,
+# \quad, …) placed before \text{} and also strips leading spaces inside
+# \text{ content}.  The workaround is to replace the spacing with a LaTeX
+# tilde (~), which in text mode becomes a non-breaking space (U+00A0).
+# U+00A0 is not XML whitespace, so Pandoc and Word both preserve it faithfully.
+#
+#   Input:  1\ \text{AU}          →  1\text{~AU}
+#   Input:  1\quad\text{m}        →  1\text{~m}
+#   Input:  \text{ AU}            →  \text{~AU}
+
+_SPACE_BEFORE_TEXT_RE = re.compile(
+    r'(?:(?:\\[ ,;:>]|\\(?:quad|qquad|enspace|thinspace|medspace|thickspace))\s*)+'
+    r'\\text\{([^}]*)\}'
+)
+_LEADING_SPACE_IN_TEXT_RE = re.compile(r'\\text\{ ')
+_DISPLAY_MATH_RE = re.compile(r'\$\$(.*?)\$\$', re.DOTALL)
+_INLINE_MATH_RE = re.compile(r'(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)')
+
+
+def _fix_math_spacing(math: str) -> str:
+    """Replace spacing commands before \\text{} with ~ inside \\text{}."""
+    math = _SPACE_BEFORE_TEXT_RE.sub(
+        lambda m: r'\text{~' + m.group(1).lstrip() + '}',
+        math,
+    )
+    math = _LEADING_SPACE_IN_TEXT_RE.sub(r'\\text{~', math)
+    return math
+
 
 def _preprocess_math_spacing(text: str, fmt: str) -> str:
-    r"""Replace LaTeX spacing commands that Pandoc drops in RTF/OMML output.
-
-    When Pandoc converts math to RTF (via OMML), it silently discards ``\ ``
-    (backslash-space, the LaTeX thick space) because OMML has no direct
-    equivalent spacing primitive for it.
-
-    Replacing ``\ `` with ``\text{ }`` works around this: Pandoc converts
-    ``\text{ }`` to an OMML text run containing a literal space character,
-    which Word then renders as a visible gap — e.g. ``1\,\text{AU}`` displays
-    as "1 AU" instead of "1AU".
-
-    For Markdown input only the content inside ``$...$`` and ``$$...$$`` math
-    delimiters is touched; prose text is left alone.
-    """
-    def _fix(math: str) -> str:
-        # \  (backslash-space) → \text{ }
-        return re.sub(r'\\ ', r'\\text{ }', math)
-
+    """Apply spacing fix to all math spans in *text*."""
     if fmt == 'latex':
-        # The whole document is LaTeX — apply globally.
-        return _fix(text)
-
-    # Markdown: only replace inside math delimiters.
-    # Handle $$...$$ (display) before $...$ (inline) to avoid mis-matching.
-    def fix_display(m: re.Match) -> str:
-        return '$$' + _fix(m.group(1)) + '$$'
-
-    def fix_inline(m: re.Match) -> str:
-        return '$' + _fix(m.group(1)) + '$'
-
-    text = re.sub(r'\$\$([\s\S]*?)\$\$', fix_display, text)
-    text = re.sub(r'\$([^$\n]+?)\$', fix_inline, text)
+        return _fix_math_spacing(text)
+    # Markdown: apply inside $$...$$ first, then $...$
+    text = _DISPLAY_MATH_RE.sub(
+        lambda m: '$$' + _fix_math_spacing(m.group(1)) + '$$', text
+    )
+    text = _INLINE_MATH_RE.sub(
+        lambda m: '$' + _fix_math_spacing(m.group(1)) + '$', text
+    )
     return text
 
 
@@ -156,57 +185,39 @@ def convert_to_clipboard(text: str, fmt: str) -> dict:
     ValueError
         For an unknown *fmt*.
     RuntimeError
-        If all conversions fail (e.g. Pandoc not installed).
+        If conversion fails (e.g. Pandoc not installed).
     """
     if fmt not in _PANDOC_INPUT:
         raise ValueError(f"Unknown format {fmt!r}. Expected 'markdown' or 'latex'.")
 
-    # Fix spacing commands that Pandoc drops in RTF/OMML output (e.g. `\ `)
-    text = _preprocess_math_spacing(text, fmt)
-
     pandoc_in = _PANDOC_INPUT[fmt]
     warnings: list[str] = []
-    rtf: str | None = None
+
+    # ── Pre-process math spacing ──────────────────────────────────────────────
+    text = _preprocess_math_spacing(text, fmt)
+
+    # ── Convert to HTML with MathML ───────────────────────────────────────────
+    # We do NOT generate CF_RTF. Pandoc's RTF/OMML writer drops all LaTeX
+    # math-spacing commands (\ , \, , \quad …) with no workaround.
+    # Pandoc's MathML writer handles them correctly via <mspace>, and
+    # Word 2016+ pastes MathML from CF_HTML natively.
     html_fragment: str | None = None
-
-    # ── RTF conversion ────────────────────────────────────────────────────────
-    try:
-        rtf = _pandoc(text, pandoc_in, "rtf", ["--standalone"])
-    except FileNotFoundError:
-        warnings.append("Pandoc not found — RTF output skipped.")
-    except Exception as exc:
-        warnings.append(f"RTF conversion failed: {exc}")
-
-    # ── HTML conversion (fragment, MathML for equations) ─────────────────────
     try:
         html_fragment = _pandoc(text, pandoc_in, "html", ["--mathml"])
     except FileNotFoundError:
-        warnings.append("Pandoc not found — HTML output skipped.")
-    except Exception as exc:
-        warnings.append(f"HTML conversion failed: {exc}")
-
-    if not rtf and not html_fragment:
         raise RuntimeError(
-            "All conversions failed. Is Pandoc installed?\n" + "\n".join(warnings)
+            "Pandoc is not installed or not on PATH. "
+            "Install it from https://pandoc.org/installing.html"
         )
+    except Exception as exc:
+        raise RuntimeError(f"Conversion failed: {exc}")
 
-    # ── Write to clipboard ────────────────────────────────────────────────────
+    # ── Write CF_HTML to clipboard ────────────────────────────────────────────
     win32clipboard.OpenClipboard()
     try:
         win32clipboard.EmptyClipboard()
-        if rtf:
-            # RTF is traditionally ASCII/latin-1; encode as cp1252 for safety.
-            # Pandoc marks the codepage in the RTF header so this is correct.
-            win32clipboard.SetClipboardData(CF_RTF, rtf.encode("cp1252", errors="replace"))
-        if html_fragment:
-            win32clipboard.SetClipboardData(CF_HTML_FORMAT, _make_cf_html(html_fragment))
+        win32clipboard.SetClipboardData(CF_HTML_FORMAT, _make_cf_html(html_fragment))
     finally:
         win32clipboard.CloseClipboard()
 
-    formats_written = []
-    if rtf:
-        formats_written.append("RTF")
-    if html_fragment:
-        formats_written.append("HTML")
-
-    return {"formats_written": formats_written, "warnings": warnings}
+    return {"formats_written": ["HTML"], "warnings": warnings}
