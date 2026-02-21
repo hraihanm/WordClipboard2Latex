@@ -6,8 +6,8 @@ interface Props {
 }
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'latex', label: 'LaTeX' },
   { key: 'markdown', label: 'Markdown' },
+  { key: 'latex', label: 'LaTeX' },
   { key: 'html', label: 'HTML' },
 ];
 

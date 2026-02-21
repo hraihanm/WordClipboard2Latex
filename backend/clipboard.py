@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import win32clipboard
 
 
@@ -18,9 +20,21 @@ _KNOWN_FORMATS: dict[int, str] = {
 }
 
 
+def _open_clipboard(retries: int = 5, delay: float = 0.05) -> None:
+    """Open the clipboard with retries to handle transient lock contention."""
+    for i in range(retries):
+        try:
+            win32clipboard.OpenClipboard()
+            return
+        except Exception:
+            if i == retries - 1:
+                raise
+            time.sleep(delay)
+
+
 def read_clipboard_debug() -> dict:
     """Return debug info about clipboard contents: available formats and raw HTML."""
-    win32clipboard.OpenClipboard()
+    _open_clipboard()
     try:
         formats: list[dict] = []
         fmt = 0
@@ -79,7 +93,7 @@ def read_clipboard_html() -> str | None:
     Returns the HTML string (after stripping the CF_HTML header) or None
     if the clipboard does not contain HTML data.
     """
-    win32clipboard.OpenClipboard()
+    _open_clipboard()
     try:
         if not win32clipboard.IsClipboardFormatAvailable(CF_HTML):
             return None

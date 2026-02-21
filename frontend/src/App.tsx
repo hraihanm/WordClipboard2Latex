@@ -4,14 +4,14 @@ import ConvertButton from './components/ConvertButton';
 import OutputTabs, { type TabKey } from './components/OutputTabs';
 import CodeOutput from './components/CodeOutput';
 import CopyButton from './components/CopyButton';
-import MathPreview from './components/MathPreview';
+import Preview from './components/Preview';
 import './App.css';
 
 function App() {
   const [result, setResult] = useState<ConvertResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('latex');
+  const [activeTab, setActiveTab] = useState<TabKey>('markdown');
   const [darkMode, setDarkMode] = useState(() =>
     window.matchMedia('(prefers-color-scheme: dark)').matches
   );
@@ -26,6 +26,17 @@ function App() {
   useEffect(() => {
     healthCheck().then((h) => setPandocOk(h.pandoc_installed)).catch(() => setPandocOk(false));
   }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !loading && e.shiftKey) {
+        e.preventDefault();
+        handleConvert();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  });
 
   const handleConvert = async () => {
     setLoading(true);
@@ -75,8 +86,11 @@ function App() {
 
       <main>
         <div className="convert-section">
-          <p className="hint">Copy content from Microsoft Word, then click the button below.</p>
+          <p className="hint">
+            Copy content from Microsoft Word, then click the button below.
+          </p>
           <ConvertButton onClick={handleConvert} loading={loading} />
+          <p className="shortcut-hint">Ctrl+Shift+V to convert</p>
         </div>
 
         {error && (
@@ -93,12 +107,10 @@ function App() {
             </div>
             <CodeOutput content={currentOutput} language={langMap[activeTab]} />
 
-            {activeTab === 'latex' && (
-              <div className="preview-section">
-                <h3>Preview</h3>
-                <MathPreview latex={currentOutput} />
-              </div>
-            )}
+            <div className="preview-section">
+              <h3>Preview</h3>
+              <Preview content={currentOutput} mode={activeTab} />
+            </div>
           </div>
         )}
 
