@@ -43,6 +43,9 @@ def node_to_markdown(node: DocNode) -> str:
             items.append(f"{prefix} {node_to_markdown(child)}")
         return "\n".join(items)
 
+    if node.type == NodeType.TABLE:
+        return ""  # handled by converter._convert_table
+
     return node.content
 
 

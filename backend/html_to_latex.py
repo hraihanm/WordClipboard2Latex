@@ -46,6 +46,9 @@ def node_to_latex(node: DocNode) -> str:
             items.append(f"  \\item {node_to_latex(child)}")
         return f"\\begin{{{env}}}\n" + "\n".join(items) + f"\n\\end{{{env}}}"
 
+    if node.type == NodeType.TABLE:
+        return ""  # handled by converter._convert_table
+
     return node.content
 
 

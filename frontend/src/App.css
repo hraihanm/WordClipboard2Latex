@@ -318,6 +318,24 @@ header h1 {
   height: auto;
 }
 
+.preview-html table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5rem 0;
+}
+
+.preview-html th,
+.preview-html td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.75rem;
+  text-align: left;
+}
+
+.preview-html th {
+  background: var(--surface);
+  font-weight: 600;
+}
+
 /* LaTeX preview */
 .preview-latex {
   line-height: 2;

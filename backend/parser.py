@@ -16,6 +16,7 @@ class NodeType(str, Enum):
     HEADING = "heading"
     LIST = "list"
     PARAGRAPH = "paragraph"
+    TABLE = "table"
 
 
 @dataclass
@@ -28,6 +29,7 @@ class DocNode:
     html: str = ""  # raw inner HTML for text nodes
     list_ordered: bool = False
     math_env: str = ""  # "aligned", "pmatrix", "cases", ""
+    table_rows: list[list[list["DocNode"]]] = field(default_factory=list)  # rows → cells → nodes
 
 
 # Regex to detect Word heading classes like MsoHeading1, MsoHeading2, etc.
@@ -54,11 +56,22 @@ _FALLBACK_CONDITIONAL_RE = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 
+# Regex to strip all remaining conditional comments (VML, supportedlists, etc.)
+# This catches <!--[if gte vml 1]>...<![endif]--> and similar.
+_REMAINING_CONDITIONAL_RE = re.compile(
+    r'<!--\[if\s[^\]]*\]>.*?<!\[endif\]-->',
+    re.DOTALL,
+)
+
 
 def _unwrap_omml_conditionals(html: str) -> str:
-    """Unwrap OMML from Word conditional comments so we can see it."""
+    """Unwrap OMML from Word conditional comments and strip the rest."""
+    # Unwrap OMML equations (keep inner content)
     html = _OMML_CONDITIONAL_RE.sub(r'\1', html)
+    # Strip OMML fallback blocks
     html = _FALLBACK_CONDITIONAL_RE.sub('', html)
+    # Strip all remaining conditional comments (VML images, etc.)
+    html = _REMAINING_CONDITIONAL_RE.sub('', html)
     return html
 
 
@@ -197,6 +210,11 @@ def _walk_elements(
                     type=NodeType.INLINE_MATH,
                     omml_xml=xml,
                 ))
+            continue
+
+        # Check for tables
+        if tag_name == "table":
+            _handle_table(child, nodes, display_blocks, inline_blocks)
             continue
 
         # Check for list elements
@@ -389,3 +407,55 @@ def _handle_list(list_tag: Tag, nodes: list[DocNode]) -> None:
         children=children,
         list_ordered=ordered,
     ))
+
+
+def _handle_table(
+    table_tag: Tag,
+    nodes: list[DocNode],
+    display_blocks: dict[str, str],
+    inline_blocks: dict[str, str],
+) -> None:
+    """Process a <table> element into a TABLE DocNode."""
+    rows: list[list[list[DocNode]]] = []
+
+    for tr in table_tag.find_all("tr"):
+        row_cells: list[list[DocNode]] = []
+        for cell in tr.find_all(["td", "th"]):
+            cell_nodes: list[DocNode] = []
+            _extract_cell_content(cell, cell_nodes, display_blocks, inline_blocks)
+            row_cells.append(cell_nodes)
+        if row_cells:
+            rows.append(row_cells)
+
+    if rows:
+        nodes.append(DocNode(type=NodeType.TABLE, table_rows=rows))
+
+
+def _extract_cell_content(
+    cell_tag: Tag,
+    out: list[DocNode],
+    display_blocks: dict[str, str],
+    inline_blocks: dict[str, str],
+) -> None:
+    """Extract content from a table cell (<td> or <th>)."""
+    # Word wraps cell content in <p> tags — extract inline content from each.
+    paragraphs = cell_tag.find_all("p")
+    if paragraphs:
+        for p in paragraphs:
+            # Check for display math placeholder
+            display_placeholder = p.find("omml-display")
+            if display_placeholder:
+                block_id = display_placeholder.get("data-id", "")
+                xml = display_blocks.get(block_id, "")
+                if xml:
+                    math_env = _detect_math_env_from_xml(xml)
+                    out.append(DocNode(
+                        type=NodeType.DISPLAY_MATH,
+                        omml_xml=xml,
+                        math_env=math_env,
+                    ))
+                continue
+            _extract_inline(p, out, inline_blocks)
+    else:
+        # No <p> wrappers — extract directly from cell
+        _extract_inline(cell_tag, out, inline_blocks)

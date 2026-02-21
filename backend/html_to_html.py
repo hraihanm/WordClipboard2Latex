@@ -49,6 +49,9 @@ def node_to_html(node: DocNode) -> str:
             items.append(f"<li>{node_to_html(child)}</li>")
         return f"<{tag}>{''.join(items)}</{tag}>"
 
+    if node.type == NodeType.TABLE:
+        return ""  # handled by converter._convert_table
+
     return _escape_html(node.content)
 
 

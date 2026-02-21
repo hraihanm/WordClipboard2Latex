@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from clipboard import read_clipboard_html
 from html_to_html import node_to_html
 from html_to_latex import node_to_latex, _escape_latex
@@ -104,6 +106,10 @@ def _convert_node(
         html_parts.append(node_to_html(node))
         return
 
+    if node.type == NodeType.TABLE:
+        _convert_table(node, latex_parts, md_parts, html_parts, warnings)
+        return
+
     # Default: text node
     latex_parts.append(node_to_latex(node))
     md_parts.append(node_to_markdown(node))
@@ -125,3 +131,94 @@ def _convert_math(node: DocNode, warnings: list[str]) -> str:
     except Exception as e:
         warnings.append(f"Math conversion error: {e}")
         return ""
+
+
+def _convert_cell(children: list[DocNode], warnings: list[str]) -> tuple[str, str, str]:
+    """Convert a table cell's children to (latex, markdown, html) strings.
+
+    Forces all math to inline $...$ and collapses to a single line,
+    because Markdown pipe tables require each row on one line.
+    """
+    cell_latex: list[str] = []
+    cell_md: list[str] = []
+    cell_html: list[str] = []
+
+    for child in children:
+        if child.type in (NodeType.INLINE_MATH, NodeType.DISPLAY_MATH):
+            # Force inline math in table cells (no $$...$$ with newlines)
+            latex_math = _convert_math(child, warnings).strip()
+            if latex_math:
+                cell_latex.append(f"${latex_math}$")
+                cell_md.append(f"${latex_math}$")
+                cell_html.append(f'<span class="math inline">\\({latex_math}\\)</span>')
+        else:
+            _convert_node(child, cell_latex, cell_md, cell_html, warnings)
+
+    # Collapse to single line (required for Markdown pipe tables)
+    def to_line(parts: list[str]) -> str:
+        return re.sub(r'\s+', ' ', ' '.join(p for p in parts if p.strip())).strip()
+
+    return to_line(cell_latex), to_line(cell_md), to_line(cell_html)
+
+
+def _convert_table(
+    node: DocNode,
+    latex_parts: list[str],
+    md_parts: list[str],
+    html_parts: list[str],
+    warnings: list[str],
+) -> None:
+    """Convert a TABLE DocNode to all three output formats."""
+    latex_rows: list[list[str]] = []
+    md_rows: list[list[str]] = []
+    html_rows: list[list[str]] = []
+
+    for row in node.table_rows:
+        lat_cells, md_cells, htm_cells = [], [], []
+        for cell_children in row:
+            lat, md, htm = _convert_cell(cell_children, warnings)
+            lat_cells.append(lat)
+            md_cells.append(md)
+            htm_cells.append(htm)
+        latex_rows.append(lat_cells)
+        md_rows.append(md_cells)
+        html_rows.append(htm_cells)
+
+    if not latex_rows:
+        return
+
+    num_cols = max(len(r) for r in latex_rows)
+
+    # --- LaTeX: tabular environment ---
+    col_spec = "|" + "|".join(["l"] * num_cols) + "|"
+    lines = [f"\\begin{{tabular}}{{{col_spec}}}", "\\hline"]
+    for row in latex_rows:
+        while len(row) < num_cols:
+            row.append("")
+        lines.append(" & ".join(row) + " \\\\")
+        lines.append("\\hline")
+    lines.append("\\end{tabular}")
+    latex_parts.append("\n".join(lines))
+
+    # --- Markdown: pipe table ---
+    md_lines = []
+    for i, row in enumerate(md_rows):
+        while len(row) < num_cols:
+            row.append("")
+        # Escape pipe characters inside cell content
+        escaped = [c.replace("|", "\\|") for c in row]
+        md_lines.append("| " + " | ".join(escaped) + " |")
+        if i == 0:
+            md_lines.append("| " + " | ".join(["---"] * num_cols) + " |")
+    md_parts.append("\n".join(md_lines))
+
+    # --- HTML: clean table ---
+    htm_lines = ["<table>"]
+    for i, row in enumerate(html_rows):
+        htm_lines.append("<tr>")
+        tag = "th" if i == 0 else "td"
+        for cell in row:
+            htm_lines.append(f"  <{tag}>{cell}</{tag}>")
+        htm_lines.append("</tr>")
+    htm_lines.append("</table>")
+    html_parts.append("\n".join(htm_lines))
