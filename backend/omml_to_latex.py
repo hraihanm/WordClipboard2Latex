@@ -82,15 +82,28 @@ def _wrap_bare_text_in_mt(xml: str) -> str:
         rpr_match = re.match(r'(<m:rPr\b.*?</m:rPr>)(.*)', inner, re.DOTALL)
         if rpr_match:
             rpr = rpr_match.group(1)
-            text = rpr_match.group(2).strip()
-            if text:
-                return f'<m:r>{rpr}<m:t>{text}</m:t></m:r>'
-            return f'<m:r>{rpr}</m:r>'
+            raw = rpr_match.group(2)
+            text = raw.strip()
+            if not text:
+                # Whitespace-only — preserve it so Pandoc emits a space
+                if raw:
+                    return f'<m:r>{rpr}<m:t xml:space="preserve">{raw}</m:t></m:r>'
+                return f'<m:r>{rpr}</m:r>'
+            # If stripping changed the content, keep surrounding whitespace
+            if raw != text:
+                return f'<m:r>{rpr}<m:t xml:space="preserve">{raw}</m:t></m:r>'
+            return f'<m:r>{rpr}<m:t>{text}</m:t></m:r>'
         # No rPr — the whole inner content is text
-        text = inner.strip()
-        if text:
-            return f'<m:r><m:t>{text}</m:t></m:r>'
-        return '<m:r></m:r>'
+        raw = inner
+        text = raw.strip()
+        if not text:
+            # Whitespace-only run — preserve it
+            if raw:
+                return f'<m:r><m:t xml:space="preserve">{raw}</m:t></m:r>'
+            return '<m:r></m:r>'
+        if raw != text:
+            return f'<m:r><m:t xml:space="preserve">{raw}</m:t></m:r>'
+        return f'<m:r><m:t>{text}</m:t></m:r>'
 
     # Match <m:r>...</m:r> blocks (non-greedy)
     return re.sub(r'<m:r\b[^>]*>(.*?)</m:r>', fix_mr, xml, flags=re.DOTALL)

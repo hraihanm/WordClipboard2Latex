@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from clipboard import read_clipboard_debug
 from converter import convert_clipboard, convert_html
+from to_clipboard import convert_to_clipboard
 
 app = FastAPI(title="Word2LaTeX", version="1.0.0")
 
@@ -67,6 +68,28 @@ def convert():
             status_code=500,
             content={"error": str(e), "warnings": [str(e)]},
         )
+
+
+@app.post("/api/to-clipboard")
+def to_clipboard(body: dict):
+    """Convert Markdown or LaTeX text and write it to the Windows clipboard.
+
+    Body: ``{"text": "...", "format": "markdown" | "latex"}``
+    """
+    text = body.get("text", "").strip()
+    fmt = body.get("format", "markdown")
+    if not text:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "No text provided", "warnings": ["No text provided"]},
+        )
+    try:
+        result = convert_to_clipboard(text, fmt)
+        return result
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 @app.post("/api/convert/text")

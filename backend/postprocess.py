@@ -15,6 +15,7 @@ def postprocess_latex(latex: str) -> str:
     latex = _fix_log_subscript(latex)
     latex = _fix_whitespace(latex)
     latex = _fix_common_pandoc_quirks(latex)
+    latex = _fix_number_unit_spacing(latex)
     return latex.strip()
 
 
@@ -255,6 +256,22 @@ def _fix_whitespace(latex: str) -> str:
     # Remove trailing whitespace on lines
     latex = '\n'.join(line.rstrip() for line in latex.splitlines())
     return latex
+
+
+def _fix_number_unit_spacing(latex: str) -> str:
+    r"""Insert a thin space (\,) between a number and a \text{…} unit label.
+
+    In LaTeX math mode, plain spaces are ignored, so ``5407 \text{Å}`` and
+    ``5407\text{Å}`` render identically — with no visible gap.  The correct
+    typographic convention (ISO 80000 / siunitx) is a thin space:
+
+        5407\,\text{Å}
+
+    This rule fires when a digit is followed by optional whitespace and then
+    ``\text{``.  It does *not* touch letter-to-\text patterns (e.g. ``x\text{th}``)
+    because those are usually ordinal suffixes that need no space.
+    """
+    return re.sub(r'(\d)\s*(\\text\{)', r'\1\\,\2', latex)
 
 
 def _fix_common_pandoc_quirks(latex: str) -> str:

@@ -5,6 +5,7 @@ import OutputTabs, { type TabKey } from './components/OutputTabs';
 import CodeOutput from './components/CodeOutput';
 import CopyButton from './components/CopyButton';
 import Preview from './components/Preview';
+import ToWordPanel from './components/ToWordPanel';
 import './App.css';
 
 function App() {
@@ -126,6 +127,16 @@ function App() {
             </div>
           </div>
         )}
+
+        <div className="section-divider">
+          <span>Text → Word</span>
+        </div>
+
+        <ToWordPanel />
+
+        <div className="section-divider">
+          <span>Debug</span>
+        </div>
 
         {debugInfo && (
           <details

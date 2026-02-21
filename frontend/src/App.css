@@ -399,6 +399,153 @@ header h1 {
   line-height: 2;
 }
 
+/* ── Section divider ── */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 2rem 0 1rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Text → Word panel ── */
+.to-word-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.to-word-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.75rem 0 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  gap: 0.75rem;
+}
+
+.to-word-title-tabs {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.to-word-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+  padding: 0 0.75rem;
+  white-space: nowrap;
+  border-right: 1px solid var(--border);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.to-word-textarea {
+  display: block;
+  width: 100%;
+  min-height: 200px;
+  max-height: 480px;
+  padding: 1rem 1.25rem;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  border: none;
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.to-word-textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.to-word-footer {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  min-height: 36px;
+}
+
+.to-word-status {
+  font-size: 0.82rem;
+}
+
+.to-word-status.ok {
+  color: #16a34a;
+}
+
+.to-word-status.error {
+  color: #dc2626;
+}
+
+.to-word-warnings {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.to-word-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.copy-to-word-btn {
+  background: #059669;
+  color: white;
+  border: none;
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.copy-to-word-btn:hover:not(:disabled) {
+  background: #047857;
+  box-shadow: 0 2px 5px rgba(5, 150, 105, 0.35);
+}
+
+.copy-to-word-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.spinner-dark {
+  border-color: rgba(255,255,255,0.35);
+  border-top-color: white;
+}
+
 /* ── Debug section ── */
 .debug-section {
   margin-top: 1.5rem;

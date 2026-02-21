@@ -51,6 +51,27 @@ export interface ClipboardInfo {
   error?: string;
 }
 
+export interface ToClipboardResult {
+  formats_written: string[];
+  warnings: string[];
+}
+
+export async function toClipboard(
+  text: string,
+  format: 'markdown' | 'latex',
+): Promise<ToClipboardResult> {
+  const res = await fetch('/api/to-clipboard', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, format }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function clipboardInfo(): Promise<ClipboardInfo> {
   const res = await fetch('/api/clipboard-info');
   if (!res.ok) {
