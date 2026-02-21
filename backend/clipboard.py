@@ -73,7 +73,7 @@ def read_clipboard_debug() -> dict:
             "formats": formats,
             "has_html": has_html,
             "raw_html": raw_html[:50000],  # cap at 50KB for display
-            "plain_text": plain_text[:5000],
+            "plain_text": plain_text[:30000],  # cap at 30K chars for display
         }
     except Exception as e:
         return {

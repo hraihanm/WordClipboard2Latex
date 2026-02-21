@@ -11,7 +11,8 @@ function App() {
   const [result, setResult] = useState<ConvertResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('markdown');
+  const [codeTab, setCodeTab] = useState<TabKey>('markdown');
+  const [previewTab, setPreviewTab] = useState<TabKey>('markdown');
   const [darkMode, setDarkMode] = useState(() =>
     window.matchMedia('(prefers-color-scheme: dark)').matches
   );
@@ -58,8 +59,6 @@ function App() {
     }
   };
 
-  const currentOutput = result ? result[activeTab] : '';
-
   const langMap: Record<TabKey, string> = {
     latex: 'latex',
     markdown: 'markdown',
@@ -100,22 +99,40 @@ function App() {
         )}
 
         {result && (
-          <div className="output-section">
-            <div className="output-header">
-              <OutputTabs activeTab={activeTab} onTabChange={setActiveTab} />
-              <CopyButton text={currentOutput} />
+          <div className="output-grid">
+            {/* Left panel: Raw code */}
+            <div className="output-panel">
+              <div className="panel-header">
+                <div className="panel-title-tabs">
+                  <span className="panel-label">Code</span>
+                  <OutputTabs activeTab={codeTab} onTabChange={setCodeTab} />
+                </div>
+                <CopyButton text={result[codeTab]} />
+              </div>
+              <CodeOutput content={result[codeTab]} language={langMap[codeTab]} />
             </div>
-            <CodeOutput content={currentOutput} language={langMap[activeTab]} />
 
-            <div className="preview-section">
-              <h3>Preview</h3>
-              <Preview content={currentOutput} mode={activeTab} />
+            {/* Right panel: Preview */}
+            <div className="output-panel">
+              <div className="panel-header">
+                <div className="panel-title-tabs">
+                  <span className="panel-label">Preview</span>
+                  <OutputTabs activeTab={previewTab} onTabChange={setPreviewTab} />
+                </div>
+              </div>
+              <div className="preview-wrapper">
+                <Preview content={result[previewTab]} mode={previewTab} />
+              </div>
             </div>
           </div>
         )}
 
         {debugInfo && (
-          <details className="debug-section" open={debugOpen} onToggle={(e) => setDebugOpen((e.target as HTMLDetailsElement).open)}>
+          <details
+            className="debug-section"
+            open={debugOpen}
+            onToggle={(e) => setDebugOpen((e.target as HTMLDetailsElement).open)}
+          >
             <summary>Clipboard Debug Info</summary>
             <div className="debug-content">
               <div className="debug-formats">
@@ -134,7 +151,9 @@ function App() {
                   </tbody>
                 </table>
                 <p className={debugInfo.has_html ? 'status-ok' : 'status-warn'}>
-                  {debugInfo.has_html ? 'HTML Format detected (OMML equations will be converted)' : 'No HTML Format — only plain text available'}
+                  {debugInfo.has_html
+                    ? 'HTML Format detected (OMML equations will be converted)'
+                    : 'No HTML Format — only plain text available'}
                 </p>
               </div>
 

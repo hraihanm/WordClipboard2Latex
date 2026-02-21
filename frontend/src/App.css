@@ -1,8 +1,8 @@
-/* App layout */
+/* ── App layout ── */
 .app {
-  max-width: 900px;
+  max-width: 1500px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 1.5rem 2rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -10,14 +10,16 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--border);
 }
 
 header h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .header-actions {
@@ -29,22 +31,29 @@ header h1 {
 .warning-badge {
   background: #fef3cd;
   color: #856404;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.6rem;
   border-radius: 4px;
   font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .theme-toggle {
   background: none;
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 0.4rem 0.6rem;
+  padding: 0.35rem 0.6rem;
   cursor: pointer;
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: var(--text);
+  transition: background 0.15s, border-color 0.15s;
+  line-height: 1;
 }
 
-/* Convert section */
+.theme-toggle:hover {
+  background: var(--surface);
+}
+
+/* ── Convert section ── */
 .convert-section {
   text-align: center;
   margin-bottom: 1.5rem;
@@ -53,74 +62,132 @@ header h1 {
 .hint {
   color: var(--text-muted);
   margin-bottom: 1rem;
+  font-size: 0.95rem;
 }
 
 .convert-btn {
   background: #2563eb;
   color: white;
   border: none;
-  padding: 0.75rem 2rem;
+  padding: 0.7rem 1.75rem;
   border-radius: 8px;
   font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  transition: background 0.2s;
+  transition: background 0.15s, box-shadow 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
 
 .convert-btn:hover:not(:disabled) {
   background: #1d4ed8;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
 }
 
 .convert-btn:disabled {
-  opacity: 0.7;
+  opacity: 0.65;
   cursor: not-allowed;
 }
 
 .spinner {
   display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255,255,255,0.35);
   border-top-color: white;
   border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+  animation: spin 0.55s linear infinite;
+  flex-shrink: 0;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* Error box */
+/* ── Shortcut hint ── */
+.shortcut-hint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0.65;
+}
+
+/* ── Error box ── */
 .error-box {
   background: #fef2f2;
   color: #991b1b;
   border: 1px solid #fecaca;
   border-radius: 8px;
   padding: 0.75rem 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   white-space: pre-wrap;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
-/* Output section */
-.output-section {
+[data-theme="dark"] .error-box {
+  background: #2d1212;
+  color: #fca5a5;
+  border-color: #7f1d1d;
+}
+
+/* ── Two-panel output grid ── */
+.output-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .output-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Panel ── */
+.output-panel {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
+  max-height: 640px;
+  background: var(--bg);
 }
 
-.output-header {
+.panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 0.5rem;
+  padding: 0 0.6rem 0 0;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
-/* Tabs */
+.panel-title-tabs {
+  display: flex;
+  align-items: center;
+}
+
+.panel-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+  padding: 0 0.75rem;
+  white-space: nowrap;
+  border-right: 1px solid var(--border);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Tabs ── */
 .tabs {
   display: flex;
   gap: 0;
@@ -129,12 +196,13 @@ header h1 {
 .tab {
   background: none;
   border: none;
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 0.9rem;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
   border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
 }
 
 .tab:hover {
@@ -144,71 +212,61 @@ header h1 {
 .tab.active {
   color: #2563eb;
   border-bottom-color: #2563eb;
+  font-weight: 500;
 }
 
-/* Copy button */
+/* ── Copy button ── */
 .copy-btn {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 0.4rem 0.75rem;
+  padding: 0.35rem 0.7rem;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text);
-  transition: background 0.2s;
+  transition: background 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .copy-btn:hover:not(:disabled) {
   background: var(--surface);
 }
 
-/* Code output */
+/* ── Code output ── */
 .code-output {
+  flex: 1;
   overflow: auto;
-  max-height: 400px;
+  min-height: 0;
 }
 
 .code-output pre {
   margin: 0;
   padding: 1rem;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 0.85rem;
-  line-height: 1.5;
+  font-size: 0.82rem;
+  line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-/* Shortcut hint */
-.shortcut-hint {
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  opacity: 0.7;
+/* ── Preview wrapper ── */
+.preview-wrapper {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  padding: 1rem 1.25rem;
 }
 
-/* Preview section */
-.preview-section {
-  border-top: 2px solid var(--border);
-  padding: 1rem;
-}
-
-.preview-section h3 {
-  margin: 0 0 0.75rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Shared preview */
+/* ── Shared preview ── */
 .preview {
-  padding: 0.5rem;
   line-height: 1.7;
 }
 
 .preview.empty {
   color: var(--text-muted);
   font-style: italic;
+  font-size: 0.9rem;
 }
 
 .math-block {
@@ -220,20 +278,20 @@ header h1 {
   display: inline;
 }
 
-/* Markdown preview — prose styling */
+/* ── Markdown preview ── */
 .preview-markdown h1,
 .preview-markdown h2,
 .preview-markdown h3,
 .preview-markdown h4,
 .preview-markdown h5,
 .preview-markdown h6 {
-  margin: 1rem 0 0.5rem;
+  margin: 1rem 0 0.45rem;
   line-height: 1.3;
 }
 
 .preview-markdown h1 { font-size: 1.5rem; }
-.preview-markdown h2 { font-size: 1.3rem; }
-.preview-markdown h3 { font-size: 1.15rem; }
+.preview-markdown h2 { font-size: 1.25rem; }
+.preview-markdown h3 { font-size: 1.1rem; }
 
 .preview-markdown p {
   margin: 0.5rem 0;
@@ -246,7 +304,7 @@ header h1 {
 }
 
 .preview-markdown li {
-  margin: 0.25rem 0;
+  margin: 0.2rem 0;
 }
 
 .preview-markdown blockquote {
@@ -261,7 +319,7 @@ header h1 {
   border: 1px solid var(--border);
   border-radius: 3px;
   padding: 0.1rem 0.3rem;
-  font-size: 0.85em;
+  font-size: 0.83em;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
 }
 
@@ -283,12 +341,13 @@ header h1 {
   border-collapse: collapse;
   width: 100%;
   margin: 0.5rem 0;
+  font-size: 0.9rem;
 }
 
 .preview-markdown th,
 .preview-markdown td {
   border: 1px solid var(--border);
-  padding: 0.4rem 0.75rem;
+  padding: 0.35rem 0.7rem;
   text-align: left;
 }
 
@@ -302,15 +361,14 @@ header h1 {
   height: auto;
 }
 
-/* HTML preview */
+/* ── HTML preview ── */
 .preview-html {
   all: initial;
   display: block;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   line-height: 1.6;
   color: var(--text);
-  padding: 0.5rem;
 }
 
 .preview-html img {
@@ -327,7 +385,7 @@ header h1 {
 .preview-html th,
 .preview-html td {
   border: 1px solid var(--border);
-  padding: 0.4rem 0.75rem;
+  padding: 0.35rem 0.7rem;
   text-align: left;
 }
 
@@ -336,27 +394,42 @@ header h1 {
   font-weight: 600;
 }
 
-/* LaTeX preview */
+/* ── LaTeX preview ── */
 .preview-latex {
   line-height: 2;
 }
 
-/* Debug section */
+/* ── Debug section ── */
 .debug-section {
   margin-top: 1.5rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
 }
 
 .debug-section summary {
-  padding: 0.75rem 1rem;
+  padding: 0.7rem 1rem;
   cursor: pointer;
   background: var(--surface);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
   user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.debug-section summary::before {
+  content: '▶';
+  font-size: 0.65rem;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+
+.debug-section[open] summary::before {
+  transform: rotate(90deg);
 }
 
 .debug-section summary:hover {
@@ -370,12 +443,15 @@ header h1 {
 .debug-formats h4,
 .debug-raw h4 {
   margin: 0 0 0.5rem;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
   color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .debug-raw {
-  margin-top: 1rem;
+  margin-top: 1.25rem;
 }
 
 .debug-table {
@@ -388,7 +464,7 @@ header h1 {
 .debug-table th,
 .debug-table td {
   text-align: left;
-  padding: 0.35rem 0.75rem;
+  padding: 0.3rem 0.75rem;
   border-bottom: 1px solid var(--border);
 }
 
@@ -408,14 +484,14 @@ header h1 {
 
 .status-ok {
   color: #16a34a;
-  font-size: 0.85rem;
-  margin: 0.25rem 0 0;
+  font-size: 0.83rem;
+  margin: 0.3rem 0 0;
 }
 
 .status-warn {
   color: #d97706;
-  font-size: 0.85rem;
-  margin: 0.25rem 0 0;
+  font-size: 0.83rem;
+  margin: 0.3rem 0 0;
 }
 
 .debug-pre {
@@ -425,9 +501,10 @@ header h1 {
   padding: 0.75rem;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 0.75rem;
-  line-height: 1.4;
-  max-height: 300px;
+  line-height: 1.5;
+  max-height: 500px;
   overflow: auto;
   white-space: pre-wrap;
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
