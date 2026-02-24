@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -109,6 +109,27 @@ def convert_text(body: dict):
             status_code=500,
             content={"error": str(e), "warnings": [str(e)]},
         )
+
+
+@app.post("/api/ocr")
+async def ocr_image(
+    image: UploadFile = File(...),
+    backend: str = Form("gemini"),
+    format: str = Form("markdown"),
+):
+    """OCR an uploaded image using Gemini API or GOT-OCR 2.0."""
+    if format not in ("latex", "markdown", "text"):
+        return JSONResponse(status_code=400, content={"error": f"Invalid format: {format!r}"})
+    if backend not in ("gemini", "got"):
+        return JSONResponse(status_code=400, content={"error": f"Invalid backend: {backend!r}"})
+    try:
+        image_bytes = await image.read()
+        mime_type = image.content_type or "image/png"
+        from ocr_service import run_ocr
+        result = run_ocr(image_bytes, mime_type, backend, format)
+        return {"result": result, "backend": backend}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 # Serve frontend static files in production

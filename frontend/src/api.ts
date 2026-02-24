@@ -72,6 +72,28 @@ export async function toClipboard(
   return res.json();
 }
 
+export interface OcrResult {
+  result: string;
+  backend: string;
+}
+
+export async function ocrImage(
+  image: File | Blob,
+  backend: 'gemini' | 'got',
+  format: 'latex' | 'markdown' | 'text',
+): Promise<OcrResult> {
+  const form = new FormData();
+  form.append('image', image instanceof File ? image : new File([image], 'paste.png', { type: 'image/png' }));
+  form.append('backend', backend);
+  form.append('format', format);
+  const res = await fetch('/api/ocr', { method: 'POST', body: form });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function clipboardInfo(): Promise<ClipboardInfo> {
   const res = await fetch('/api/clipboard-info');
   if (!res.ok) {

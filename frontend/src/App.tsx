@@ -6,6 +6,7 @@ import CodeOutput from './components/CodeOutput';
 import CopyButton from './components/CopyButton';
 import Preview from './components/Preview';
 import ToWordPanel from './components/ToWordPanel';
+import OcrPanel from './components/OcrPanel';
 import './App.css';
 
 function App() {
@@ -127,6 +128,12 @@ function App() {
             </div>
           </div>
         )}
+
+        <div className="section-divider">
+          <span>Image → OCR</span>
+        </div>
+
+        <OcrPanel />
 
         <div className="section-divider">
           <span>Text → Word</span>
