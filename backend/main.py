@@ -2,11 +2,12 @@
 
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from clipboard import read_clipboard_debug
@@ -130,6 +131,42 @@ async def ocr_image(
         return {"result": result, "backend": backend}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/api/export/docx")
+def export_docx(body: dict):
+    """Convert Markdown or LaTeX to a .docx file via Pandoc and return it for download."""
+    text = body.get("text", "").strip()
+    fmt = body.get("format", "markdown")
+    if not text:
+        return JSONResponse(status_code=400, content={"error": "No text provided"})
+    if fmt not in ("markdown", "latex"):
+        return JSONResponse(status_code=400, content={"error": f"Invalid format: {fmt!r}"})
+    if not shutil.which("pandoc"):
+        return JSONResponse(status_code=500, content={"error": "Pandoc is not installed"})
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        result = subprocess.run(
+            ["pandoc", "-f", fmt, "-t", "docx", "-o", str(tmp_path)],
+            input=text,
+            text=True,
+            capture_output=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            return JSONResponse(status_code=500, content={"error": result.stderr or "Pandoc failed"})
+        docx_bytes = tmp_path.read_bytes()
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    return Response(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": 'attachment; filename="output.docx"'},
+    )
 
 
 # Serve frontend static files in production

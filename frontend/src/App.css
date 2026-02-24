@@ -53,6 +53,37 @@ header h1 {
   background: var(--surface);
 }
 
+/* ── Main tab nav ── */
+.main-tab-nav {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 1.75rem;
+}
+
+.main-tab {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.main-tab:hover {
+  color: var(--text);
+}
+
+.main-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
 /* ── Convert section ── */
 .convert-section {
   text-align: center;
@@ -426,6 +457,8 @@ header h1 {
   border-radius: 10px;
   overflow: hidden;
   background: var(--bg);
+  display: flex;
+  flex-direction: column;
 }
 
 .ocr-controls {
@@ -437,6 +470,7 @@ header h1 {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .ocr-selects {
@@ -465,19 +499,18 @@ header h1 {
   cursor: pointer;
 }
 
-.ocr-body {
+/* ── OCR main: image left, output right ── */
+.ocr-main {
   display: grid;
-  grid-template-columns: 340px 1fr;
-  gap: 0;
-  min-height: 280px;
+  grid-template-columns: 320px 1fr;
+  min-height: 480px;
 }
 
 @media (max-width: 860px) {
-  .ocr-body {
-    grid-template-columns: 1fr;
-  }
+  .ocr-main { grid-template-columns: 1fr; }
 }
 
+/* ── Drop zone ── */
 .ocr-dropzone {
   position: relative;
   border-right: 1px solid var(--border);
@@ -487,7 +520,6 @@ header h1 {
   cursor: pointer;
   background: var(--bg);
   transition: background 0.15s;
-  min-height: 240px;
   overflow: hidden;
 }
 
@@ -505,7 +537,7 @@ header h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   color: var(--text-muted);
   font-size: 0.85rem;
   text-align: center;
@@ -514,8 +546,14 @@ header h1 {
 }
 
 .ocr-dropzone-icon {
-  font-size: 1.75rem;
-  opacity: 0.4;
+  font-size: 2rem;
+  opacity: 0.35;
+  margin-bottom: 0.25rem;
+}
+
+.ocr-dropzone-sub {
+  font-size: 0.75rem;
+  opacity: 0.65;
 }
 
 .ocr-link {
@@ -526,8 +564,8 @@ header h1 {
 }
 
 .ocr-preview-img {
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   display: block;
 }
@@ -536,39 +574,113 @@ header h1 {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0, 0, 0, 0.55);
   color: white;
   border: none;
   border-radius: 50%;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   font-size: 0.75rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
+  transition: background 0.15s;
 }
 
 .ocr-clear-btn:hover {
-  background: rgba(0,0,0,0.8);
+  background: rgba(0, 0, 0, 0.8);
 }
 
-.ocr-result-panel {
+/* ── Output column ── */
+.ocr-output {
   display: flex;
   flex-direction: column;
-  padding: 0.75rem;
-  min-height: 240px;
+  overflow: hidden;
 }
 
-.ocr-result-empty {
+.ocr-output-empty {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-style: italic;
+}
+
+.ocr-view-toggle {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ocr-view-copy {
+  margin-left: auto;
+  padding-right: 0.6rem;
+}
+
+.ocr-output-body {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.ocr-output-body .code-output {
+  flex: 1;
+}
+
+/* ── Footer ── */
+.ocr-footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.ocr-footer-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.ocr-footer-status {
+  font-size: 0.82rem;
+}
+
+.export-docx-btn {
+  background: #7c3aed;
+  color: white;
+  border: none;
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.export-docx-btn:hover:not(:disabled) {
+  background: #6d28d9;
+  box-shadow: 0 2px 5px rgba(124, 58, 237, 0.35);
+}
+
+.export-docx-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* ── Text → Word panel ── */

@@ -94,6 +94,25 @@ export async function ocrImage(
   return res.json();
 }
 
+export async function exportDocx(text: string, format: 'markdown' | 'latex'): Promise<void> {
+  const res = await fetch('/api/export/docx', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, format }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error: ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'output.docx';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function clipboardInfo(): Promise<ClipboardInfo> {
   const res = await fetch('/api/clipboard-info');
   if (!res.ok) {
