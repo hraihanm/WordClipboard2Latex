@@ -133,6 +133,22 @@ async def ocr_image(
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+@app.post("/api/translate")
+def translate(body: dict):
+    """Translate OCR'd text to a target language via Gemini, preserving math/formatting."""
+    text = body.get("text", "").strip()
+    target_language = body.get("target_language", "English")
+    fmt = body.get("format", "markdown")
+    if not text:
+        return JSONResponse(status_code=400, content={"error": "No text provided"})
+    try:
+        from ocr_service import translate_text
+        result = translate_text(text, target_language, fmt)
+        return {"result": result}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 @app.post("/api/export/docx")
 def export_docx(body: dict):
     """Convert Markdown or LaTeX to a .docx file via Pandoc and return it for download."""

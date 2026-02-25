@@ -94,6 +94,24 @@ export async function ocrImage(
   return res.json();
 }
 
+export async function translateText(
+  text: string,
+  targetLanguage: string,
+  format: 'markdown' | 'latex',
+): Promise<string> {
+  const res = await fetch('/api/translate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, target_language: targetLanguage, format }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error: ${res.status}`);
+  }
+  const data = await res.json();
+  return data.result;
+}
+
 export async function exportDocx(text: string, format: 'markdown' | 'latex'): Promise<void> {
   const res = await fetch('/api/export/docx', {
     method: 'POST',

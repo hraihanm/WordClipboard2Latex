@@ -40,17 +40,9 @@ PROMPTS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 def ocr_gemini(image_bytes: bytes, mime_type: str, fmt: str) -> str:
-    import google.genai as genai
     from google.genai import types
 
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "GEMINI_API_KEY environment variable is not set. "
-            "Get a key at https://aistudio.google.com/apikey"
-        )
-
-    client = genai.Client(api_key=api_key)
+    client = _make_gemini_client()
     response = client.models.generate_content(
         model=GEMINI_MODEL,
         contents=[
@@ -105,6 +97,41 @@ def ocr_got(image_bytes: bytes, fmt: str) -> str:
         return model.chat(tokenizer, tmp_path, ocr_type=ocr_type)
     finally:
         Path(tmp_path).unlink(missing_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# Translation (Gemini only — always uses the same API key)
+# ---------------------------------------------------------------------------
+
+def _make_gemini_client():
+    import google.genai as genai
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY environment variable is not set. "
+            "Get a key at https://aistudio.google.com/apikey"
+        )
+    return genai.Client(api_key=api_key)
+
+
+def translate_text(text: str, target_language: str, fmt: str) -> str:
+    """Translate text to target_language while preserving math and formatting."""
+    client = _make_gemini_client()
+
+    prompt = (
+        f"Translate the following text to {target_language}.\n"
+        "Rules:\n"
+        "- Preserve ALL math expressions exactly as written "
+        "($...$, $$...$$, \\begin{{...}}...\\end{{...}}, \\[...\\]).\n"
+        "- Preserve all Markdown/LaTeX formatting (headings, bold, italic, "
+        "tables, environments) — only translate the natural-language text.\n"
+        "- Do not add explanations, notes, or commentary.\n"
+        "- Output only the translated content.\n\n"
+        f"{text}"
+    )
+
+    response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+    return response.text
 
 
 # ---------------------------------------------------------------------------
