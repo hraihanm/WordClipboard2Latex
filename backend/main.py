@@ -13,8 +13,10 @@ from fastapi.staticfiles import StaticFiles
 from clipboard import read_clipboard_debug
 from converter import convert_clipboard, convert_html
 from to_clipboard import convert_to_clipboard
+from history import init_db
 
 app = FastAPI(title="Word2LaTeX", version="1.0.0")
+init_db()
 
 app.add_middleware(
     CORSMiddleware,
@@ -130,7 +132,10 @@ async def ocr_image(
         result = run_ocr(image_bytes, mime_type, backend, format)
         return {"result": result, "backend": backend}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        import traceback
+        detail = traceback.format_exc()
+        print(detail)  # visible in backend console
+        return JSONResponse(status_code=500, content={"error": str(e), "detail": detail})
 
 
 @app.post("/api/translate")
@@ -183,6 +188,37 @@ def export_docx(body: dict):
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": 'attachment; filename="output.docx"'},
     )
+
+
+@app.get("/api/history/{tab}")
+def get_history(tab: str, limit: int = 50):
+    from history import get_entries
+    return {"items": get_entries(tab, limit)}
+
+
+@app.post("/api/history")
+def add_history(body: dict):
+    tab       = body.get("tab", "").strip()
+    title     = body.get("title", "Untitled")
+    data      = body.get("data", {})
+    thumbnail = body.get("thumbnail")
+    if not tab:
+        return JSONResponse(status_code=400, content={"error": "tab required"})
+    from history import add_entry
+    entry_id = add_entry(tab, title, data, thumbnail)
+    return {"id": entry_id}
+
+
+@app.delete("/api/history/item/{entry_id}")
+def delete_history_item(entry_id: int):
+    from history import delete_entry
+    return {"deleted": delete_entry(entry_id)}
+
+
+@app.delete("/api/history/tab/{tab}")
+def clear_history(tab: str):
+    from history import clear_tab
+    return {"cleared": clear_tab(tab)}
 
 
 # Serve frontend static files in production

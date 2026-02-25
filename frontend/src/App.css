@@ -1012,6 +1012,138 @@ header h1 {
   border-top-color: white;
 }
 
+/* ── History panel ── */
+.history-panel {
+  border-top: 1px solid var(--border);
+}
+
+.history-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  background: var(--surface);
+  user-select: none;
+  list-style: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.history-summary:hover { color: var(--text); }
+.history-summary::-webkit-details-marker { display: none; }
+.history-summary::before {
+  content: '▶';
+  font-size: 0.6rem;
+  transition: transform 0.15s;
+  display: inline-block;
+  margin-right: 0.1rem;
+}
+.history-panel[open] .history-summary::before { transform: rotate(90deg); }
+
+.history-summary-label { flex: 1; }
+
+.history-count {
+  background: var(--border);
+  color: var(--text-muted);
+  border-radius: 10px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.history-clear-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-left: auto;
+}
+.history-clear-btn:hover { color: #dc2626; border-color: #dc2626; }
+
+.history-content {
+  padding: 0.5rem 0.75rem 0.75rem;
+  background: var(--bg);
+}
+
+.history-empty {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+  padding: 0.25rem 0;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.history-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--bg);
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.history-card:hover {
+  background: var(--surface);
+  border-color: #2563eb;
+}
+
+.history-thumb {
+  width: 52px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.history-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-title {
+  font-size: 0.82rem;
+  color: var(--text);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 0.1rem 0 0;
+}
+
+.history-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.history-delete-btn:hover { background: #fef2f2; color: #dc2626; }
+[data-theme="dark"] .history-delete-btn:hover { background: #2d1212; }
+
 /* ── Debug section ── */
 .debug-section {
   margin-top: 1.5rem;

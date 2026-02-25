@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
-import { type ConvertResult, type ClipboardInfo, convertClipboard, clipboardInfo } from '../api';
+import { type ConvertResult, type ClipboardInfo, convertClipboard, clipboardInfo, addHistory, type HistoryItem } from '../api';
 import ConvertButton from './ConvertButton';
 import OutputTabs, { type TabKey } from './OutputTabs';
 import CodeOutput from './CodeOutput';
 import CopyButton from './CopyButton';
 import Preview from './Preview';
+import HistoryPanel from './HistoryPanel';
+
+function makeTitle(text: string): string {
+  return text.replace(/^#+\s*/gm, '').replace(/\*\*|__|_|\*/g, '').trim().split('\n')[0].slice(0, 70) || 'Untitled';
+}
 
 interface Props {
   pandocOk: boolean | null;
@@ -18,6 +23,7 @@ export default function ClipboardPanel({ pandocOk }: Props) {
   const [previewTab, setPreviewTab] = useState<TabKey>('markdown');
   const [debugInfo, setDebugInfo] = useState<ClipboardInfo | null>(null);
   const [debugOpen, setDebugOpen] = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
 
   const handleConvert = async () => {
     setLoading(true);
@@ -27,6 +33,10 @@ export default function ClipboardPanel({ pandocOk }: Props) {
       setResult(data);
       setDebugInfo(debug);
       if (data.warnings.length > 0) setError(data.warnings.join('\n'));
+      await addHistory('clipboard', makeTitle(data.markdown || data.latex), {
+        markdown: data.markdown, latex: data.latex, html: data.html,
+      });
+      setHistoryKey((k) => k + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Conversion failed');
     } finally {
@@ -44,6 +54,12 @@ export default function ClipboardPanel({ pandocOk }: Props) {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   });
+
+  const handleRestore = (item: HistoryItem) => {
+    const d = item.data as { markdown: string; latex: string; html: string };
+    setResult({ markdown: d.markdown, latex: d.latex, html: d.html, warnings: [] });
+    setError(null);
+  };
 
   const langMap: Record<TabKey, string> = { latex: 'latex', markdown: 'markdown', html: 'html' };
 
@@ -89,6 +105,8 @@ export default function ClipboardPanel({ pandocOk }: Props) {
           </div>
         </div>
       )}
+
+      <HistoryPanel tab="clipboard" refreshKey={historyKey} onRestore={handleRestore} />
 
       {debugInfo && (
         <details

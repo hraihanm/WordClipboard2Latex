@@ -72,6 +72,44 @@ export async function toClipboard(
   return res.json();
 }
 
+// ── History ──────────────────────────────────────────────────
+export interface HistoryItem {
+  id: number;
+  tab: string;
+  created_at: string;
+  title: string;
+  thumbnail?: string;
+  data: Record<string, unknown>;
+}
+
+export async function getHistory(tab: string): Promise<HistoryItem[]> {
+  const res = await fetch(`/api/history/${tab}`);
+  const body = await res.json();
+  return body.items ?? [];
+}
+
+export async function addHistory(
+  tab: string,
+  title: string,
+  data: Record<string, unknown>,
+  thumbnail?: string,
+): Promise<number> {
+  const res = await fetch('/api/history', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tab, title, data, thumbnail }),
+  });
+  return (await res.json()).id;
+}
+
+export async function deleteHistoryItem(id: number): Promise<void> {
+  await fetch(`/api/history/item/${id}`, { method: 'DELETE' });
+}
+
+export async function clearHistory(tab: string): Promise<void> {
+  await fetch(`/api/history/tab/${tab}`, { method: 'DELETE' });
+}
+
 export interface OcrResult {
   result: string;
   backend: string;

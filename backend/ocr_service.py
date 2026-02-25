@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import os
 import tempfile
+import warnings
 from pathlib import Path
 
 from dotenv import load_dotenv
 load_dotenv()
+
+# Suppress noisy but harmless warnings from GOT-OCR's internal code
+warnings.filterwarnings("ignore", category=SyntaxWarning)
+warnings.filterwarnings("ignore", message=".*attention mask.*", category=UserWarning)
+warnings.filterwarnings("ignore", message=".*pad_token_id.*", category=UserWarning)
 
 # Override via GEMINI_MODEL env var if needed (e.g. "gemini-2.5-flash")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
@@ -61,10 +67,22 @@ _got_model = None
 _got_tokenizer = None
 
 
+def _patch_dynamic_cache() -> None:
+    """GOT-OCR 2.0 uses DynamicCache.seen_tokens which was renamed in transformers >= 4.40."""
+    try:
+        from transformers.cache_utils import DynamicCache
+        if not hasattr(DynamicCache, "seen_tokens"):
+            DynamicCache.seen_tokens = property(lambda self: self._seen_tokens)
+    except Exception:
+        pass
+
+
 def _load_got():
     global _got_model, _got_tokenizer
     if _got_model is not None:
         return _got_model, _got_tokenizer
+
+    _patch_dynamic_cache()
 
     from transformers import AutoModel, AutoTokenizer
 
@@ -85,16 +103,24 @@ def _load_got():
 
 
 def ocr_got(image_bytes: bytes, fmt: str) -> str:
-    # GOT-OCR takes a file path, not bytes
+    import traceback
     ocr_type = "ocr" if fmt == "text" else "format"
     model, tokenizer = _load_got()
 
+    # Write to temp file, flush and close before GOT-OCR opens it (required on Windows)
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         tmp.write(image_bytes)
-        tmp_path = tmp.name
+        tmp.flush()
+        tmp_path = tmp.name  # file is closed here when 'with' exits
+
+    # Use forward slashes — some internal libs choke on Windows backslashes
+    tmp_path_fwd = tmp_path.replace("\\", "/")
 
     try:
-        return model.chat(tokenizer, tmp_path, ocr_type=ocr_type)
+        result = model.chat(tokenizer, tmp_path_fwd, ocr_type=ocr_type)
+        return result
+    except Exception:
+        raise RuntimeError(traceback.format_exc())
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 

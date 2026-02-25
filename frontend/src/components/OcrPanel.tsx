@@ -1,9 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ocrImage, toClipboard, exportDocx, translateText } from '../api';
+import { ocrImage, toClipboard, exportDocx, translateText, addHistory, type HistoryItem } from '../api';
 import CodeOutput from './CodeOutput';
 import CopyButton from './CopyButton';
 import Preview from './Preview';
 import Select from './Select';
+import HistoryPanel from './HistoryPanel';
+
+function makeTitle(text: string): string {
+  return text.replace(/^\$\$[\s\S]*?\$\$/gm, '[equation]').replace(/\$[^$]+\$/g, '[math]')
+    .replace(/^#+\s*/gm, '').trim().split('\n')[0].slice(0, 70) || 'OCR Result';
+}
+
+function generateThumbnail(blob: Blob, maxWidth = 220): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.72));
+    };
+    img.src = url;
+  });
+}
 
 type Backend    = 'gemini' | 'got';
 type Format     = 'markdown' | 'latex';
@@ -44,9 +67,25 @@ export default function OcrPanel() {
 
   const [status, setStatus] = useState<ActionStatus>({ kind: 'idle' });
   const [dragging, setDragging] = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isBusy = status.kind === 'loading';
+
+  const handleRestore = (item: HistoryItem) => {
+    const d = item.data as { result: string; format: Format; backend: Backend };
+    setOcrResult(d.result);
+    setDisplayResult(d.result);
+    setFormat(d.format ?? 'markdown');
+    setBackend(d.backend ?? 'gemini');
+    setIsTranslated(false);
+    setStatus({ kind: 'idle' });
+    // Show thumbnail in drop zone
+    if (item.thumbnail) {
+      setImageUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return item.thumbnail!; });
+      setImage(null); // thumbnail only — can't re-OCR without re-uploading
+    }
+  };
 
   // ── Image loading ─────────────────────────────────────
   const loadImage = useCallback((blob: File | Blob) => {
@@ -99,6 +138,9 @@ export default function OcrPanel() {
       setOcrResult(res.result);
       setDisplayResult(res.result);
       setStatus({ kind: 'idle' });
+      const thumb = await generateThumbnail(image);
+      await addHistory('ocr', makeTitle(res.result), { result: res.result, format, backend }, thumb);
+      setHistoryKey((k) => k + 1);
     } catch (err) {
       setStatus({ kind: 'error', message: err instanceof Error ? err.message : 'OCR failed' });
     }
@@ -256,6 +298,8 @@ export default function OcrPanel() {
           {status.kind === 'error' && <span className="to-word-status error">✗ {status.message}</span>}
         </div>
       </div>
+
+      <HistoryPanel tab="ocr" refreshKey={historyKey} onRestore={handleRestore} />
 
     </div>
   );

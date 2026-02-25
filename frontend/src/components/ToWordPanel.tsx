@@ -1,6 +1,11 @@
 import { useState, useRef } from 'react';
-import { toClipboard, exportDocx } from '../api';
+import { toClipboard, exportDocx, addHistory, type HistoryItem } from '../api';
 import Preview from './Preview';
+import HistoryPanel from './HistoryPanel';
+
+function makeTitle(text: string): string {
+  return text.replace(/^#+\s*/gm, '').replace(/\*\*|__|_|\*/g, '').trim().split('\n')[0].slice(0, 70) || 'Untitled';
+}
 
 type InputFmt = 'markdown' | 'latex';
 
@@ -18,8 +23,9 @@ type Status =
 export default function ToWordPanel() {
   const [fmt, setFmt]       = useState<InputFmt>('markdown');
   const [text, setText]     = useState('');
-  const [status, setStatus] = useState<Status>({ kind: 'idle' });
-  const textareaRef         = useRef<HTMLTextAreaElement>(null);
+  const [status, setStatus]   = useState<Status>({ kind: 'idle' });
+  const [historyKey, setHistoryKey] = useState(0);
+  const textareaRef           = useRef<HTMLTextAreaElement>(null);
 
   const handleCopy = async () => {
     if (!text.trim()) return;
@@ -28,6 +34,8 @@ export default function ToWordPanel() {
       const res = await toClipboard(text, fmt);
       const msg = `Copied ${res.formats_written.join(' + ')} to clipboard — paste into Word`;
       setStatus({ kind: 'ok', message: msg });
+      await addHistory('word', makeTitle(text), { text, format: fmt });
+      setHistoryKey((k) => k + 1);
     } catch (err) {
       setStatus({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
     }
@@ -122,6 +130,17 @@ export default function ToWordPanel() {
       </div>
 
       {/* Footer */}
+      <HistoryPanel
+        tab="word"
+        refreshKey={historyKey}
+        onRestore={(item) => {
+          const d = item.data as { text: string; format: InputFmt };
+          setText(d.text ?? '');
+          setFmt(d.format ?? 'markdown');
+          setStatus({ kind: 'idle' });
+        }}
+      />
+
       <div className="to-word-footer">
         {status.kind === 'ok' && <span className="to-word-status ok">✓ {status.message}</span>}
         {status.kind === 'error' && <span className="to-word-status error">✗ {status.message}</span>}

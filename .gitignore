@@ -1,5 +1,6 @@
 # User files
 tmp/
+.vscode/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -63,6 +64,10 @@ coverage.xml
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+
+# App runtime data
+backend/history.db
+backend/.env
 
 # Flask stuff:
 instance/
