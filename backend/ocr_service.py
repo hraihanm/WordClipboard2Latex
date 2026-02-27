@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import os
 import tempfile
+import time
 import warnings
 from pathlib import Path
+from typing import Callable
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -45,10 +47,18 @@ PROMPTS: dict[str, str] = {
 # Gemini backend
 # ---------------------------------------------------------------------------
 
-def ocr_gemini(image_bytes: bytes, mime_type: str, fmt: str) -> str:
+def ocr_gemini(image_bytes: bytes, mime_type: str, fmt: str, on_log: Callable[[dict], None] | None = None) -> str:
     from google.genai import types
 
+    t0 = time.perf_counter()
+    if on_log:
+        on_log({"step": "gemini_init", "msg": "Initializing Gemini client...", "elapsed_ms": 0})
+
     client = _make_gemini_client()
+    if on_log:
+        on_log({"step": "gemini_ready", "msg": "Client ready, calling API...", "elapsed_ms": round((time.perf_counter() - t0) * 1000)})
+
+    t_api = time.perf_counter()
     response = client.models.generate_content(
         model=GEMINI_MODEL,
         contents=[
@@ -56,6 +66,8 @@ def ocr_gemini(image_bytes: bytes, mime_type: str, fmt: str) -> str:
             PROMPTS[fmt],
         ],
     )
+    if on_log:
+        on_log({"step": "gemini_done", "msg": f"Gemini API completed ({len(response.text)} chars)", "elapsed_ms": round((time.perf_counter() - t_api) * 1000)})
     return response.text
 
 
@@ -71,8 +83,15 @@ def _patch_dynamic_cache() -> None:
     """GOT-OCR 2.0 uses DynamicCache.seen_tokens which was renamed in transformers >= 4.40."""
     try:
         from transformers.cache_utils import DynamicCache
-        if not hasattr(DynamicCache, "seen_tokens"):
-            DynamicCache.seen_tokens = property(lambda self: self._seen_tokens)
+        original_init = DynamicCache.__init__
+
+        def patched_init(self, *args, **kwargs):
+            original_init(self, *args, **kwargs)
+            # Add seen_tokens attribute that GOT-OCR expects
+            if not hasattr(self, 'seen_tokens'):
+                self.seen_tokens = 0
+
+        DynamicCache.__init__ = patched_init
     except Exception:
         pass
 
@@ -84,7 +103,22 @@ def _load_got():
 
     _patch_dynamic_cache()
 
-    from transformers import AutoModel, AutoTokenizer
+    try:
+        from transformers import AutoModel, AutoTokenizer
+        import torch
+    except ImportError:
+        raise RuntimeError(
+            "GOT-OCR 2.0 requires extra packages. Install with:\n"
+            "  pip install transformers torch tiktoken accelerate pillow\n"
+            "Or use the Gemini backend (set GEMINI_API_KEY in .env)."
+        )
+
+    # Check CUDA availability and set device
+    device_map = "cuda" if torch.cuda.is_available() else "cpu"
+    if device_map == "cuda":
+        print(f"CUDA available ({torch.cuda.device_count()} device(s)), using GPU for GOT-OCR")
+    else:
+        print("CUDA not available, using CPU for GOT-OCR. This may be slower.")
 
     model_id = "ucaslcl/GOT-OCR2_0"
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
@@ -92,7 +126,7 @@ def _load_got():
         model_id,
         trust_remote_code=True,
         low_cpu_mem_usage=True,
-        device_map="cuda",
+        device_map=device_map,
         use_safetensors=True,
         pad_token_id=tokenizer.eos_token_id,
     ).eval()
@@ -102,12 +136,21 @@ def _load_got():
     return model, tokenizer
 
 
-def ocr_got(image_bytes: bytes, fmt: str) -> str:
+def ocr_got(image_bytes: bytes, fmt: str, on_log: Callable[[dict], None] | None = None) -> str:
     import traceback
     ocr_type = "ocr" if fmt == "text" else "format"
+    _patch_dynamic_cache()  # re-apply each call in case model was already cached
+
+    if on_log:
+        on_log({"step": "got_load", "msg": "Loading GOT-OCR model (first run may download ~2GB)...", "elapsed_ms": 0})
+    t0 = time.perf_counter()
     model, tokenizer = _load_got()
+    if on_log:
+        on_log({"step": "got_loaded", "msg": "Model loaded", "elapsed_ms": round((time.perf_counter() - t0) * 1000)})
 
     # Write to temp file, flush and close before GOT-OCR opens it (required on Windows)
+    if on_log:
+        on_log({"step": "got_temp", "msg": "Writing temp file...", "elapsed_ms": round((time.perf_counter() - t0) * 1000)})
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         tmp.write(image_bytes)
         tmp.flush()
@@ -117,7 +160,12 @@ def ocr_got(image_bytes: bytes, fmt: str) -> str:
     tmp_path_fwd = tmp_path.replace("\\", "/")
 
     try:
+        if on_log:
+            on_log({"step": "got_inference", "msg": "Running GOT-OCR inference...", "elapsed_ms": round((time.perf_counter() - t0) * 1000)})
+        t_inf = time.perf_counter()
         result = model.chat(tokenizer, tmp_path_fwd, ocr_type=ocr_type)
+        if on_log:
+            on_log({"step": "got_done", "msg": f"Inference complete ({len(result)} chars)", "elapsed_ms": round((time.perf_counter() - t_inf) * 1000)})
         return result
     except Exception:
         raise RuntimeError(traceback.format_exc())
@@ -161,13 +209,71 @@ def translate_text(text: str, target_language: str, fmt: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# texify backend (local, lazy-loaded) — equation crops → LaTeX
+# ---------------------------------------------------------------------------
+
+_texify_model = None
+_texify_processor = None
+
+
+def _load_texify():
+    global _texify_model, _texify_processor
+    if _texify_model is not None:
+        return _texify_model, _texify_processor
+    try:
+        from texify.model.model import load_model
+        from texify.model.processor import load_processor
+    except ImportError:
+        raise RuntimeError(
+            "texify is not installed. Install with:\n  pip install texify>=0.2.1"
+        )
+    try:
+        _texify_model = load_model()
+        _texify_processor = load_processor()
+    except (AttributeError, TypeError) as e:
+        raise RuntimeError(
+            "texify/transformers version mismatch. Try:\n"
+            "  pip install texify>=0.2.1 'transformers>=4.46,<5.0'\n"
+            f"Original error: {e}"
+        )
+    return _texify_model, _texify_processor
+
+
+def ocr_texify(image_bytes: bytes, on_log: Callable[[dict], None] | None = None) -> str:
+    """OCR an equation crop using texify. Always returns LaTeX."""
+    import io
+    from PIL import Image
+    from texify.inference import batch_inference
+
+    t0 = time.perf_counter()
+    if on_log:
+        on_log({"step": "texify_load", "msg": "Loading texify model (first run may download)...", "elapsed_ms": 0})
+    model, processor = _load_texify()
+    if on_log:
+        on_log({"step": "texify_loaded", "msg": "Model loaded", "elapsed_ms": round((time.perf_counter() - t0) * 1000)})
+
+    if on_log:
+        on_log({"step": "texify_prep", "msg": "Preparing image...", "elapsed_ms": round((time.perf_counter() - t0) * 1000)})
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    if on_log:
+        on_log({"step": "texify_inference", "msg": "Running texify inference...", "elapsed_ms": round((time.perf_counter() - t0) * 1000)})
+    t_inf = time.perf_counter()
+    results = batch_inference([img], model, processor)
+    if on_log:
+        on_log({"step": "texify_done", "msg": "Inference complete", "elapsed_ms": round((time.perf_counter() - t_inf) * 1000)})
+    return results[0] if results else ""
+
+
+# ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
 
-def run_ocr(image_bytes: bytes, mime_type: str, backend: str, fmt: str) -> str:
+def run_ocr(image_bytes: bytes, mime_type: str, backend: str, fmt: str, on_log: Callable[[dict], None] | None = None) -> str:
     if backend == "gemini":
-        return ocr_gemini(image_bytes, mime_type, fmt)
+        return ocr_gemini(image_bytes, mime_type, fmt, on_log)
     elif backend == "got":
-        return ocr_got(image_bytes, fmt)
+        return ocr_got(image_bytes, fmt, on_log)
+    elif backend == "texify":
+        return ocr_texify(image_bytes, on_log)
     else:
         raise ValueError(f"Unknown backend: {backend!r}")

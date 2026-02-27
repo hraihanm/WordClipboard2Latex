@@ -122,6 +122,30 @@ header h1 {
   cursor: not-allowed;
 }
 
+.ocr-run-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ocr-cancel-btn {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.ocr-cancel-btn:hover {
+  background: var(--surface);
+  color: var(--text);
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
 .spinner {
   display: inline-block;
   width: 15px;
@@ -1091,9 +1115,17 @@ header h1 {
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  cursor: pointer;
   background: var(--bg);
   transition: background 0.12s, border-color 0.12s;
+}
+
+.history-card-clickable {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
 }
 
 .history-card:hover {
@@ -1143,6 +1175,64 @@ header h1 {
 }
 .history-delete-btn:hover { background: #fef2f2; color: #dc2626; }
 [data-theme="dark"] .history-delete-btn:hover { background: #2d1212; }
+
+/* ── texify crop mode ── */
+.ocr-texify-badge {
+  font-size: 0.75rem;
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 5px;
+  padding: 0.2rem 0.55rem;
+  white-space: nowrap;
+}
+
+.ocr-img-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.ocr-crop-hint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0.28rem 0.75rem;
+  background: rgba(37, 99, 235, 0.07);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.18);
+  font-size: 0.72rem;
+  color: #2563eb;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ocr-crop-hint.crop-ready {
+  background: rgba(5, 150, 105, 0.07);
+  border-bottom-color: rgba(5, 150, 105, 0.18);
+  color: #059669;
+}
+
+.ocr-crop-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  user-select: none;
+  z-index: 1;
+}
+
+.ocr-crop-selection {
+  position: absolute;
+  border: 2px dashed #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.25);
+  pointer-events: none;
+  box-sizing: border-box;
+}
 
 /* ── Debug section ── */
 .debug-section {
@@ -1225,6 +1315,64 @@ header h1 {
 
 [data-theme="dark"] .debug-table tr.highlight td {
   background: #1e3a5f;
+}
+
+.debug-logs {
+  margin-top: 1rem;
+}
+
+.debug-logs h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.debug-logs-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.75rem;
+}
+
+.debug-log-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+}
+
+.debug-log-entry:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .debug-log-entry:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.debug-log-time {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  min-width: 4.5rem;
+}
+
+.debug-log-step {
+  flex-shrink: 0;
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.debug-log-msg {
+  flex: 1;
+  color: var(--text);
+}
+
+.debug-log-pending .debug-log-msg {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .status-ok {

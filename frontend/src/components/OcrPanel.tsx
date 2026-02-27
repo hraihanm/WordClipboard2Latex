@@ -28,9 +28,19 @@ function generateThumbnail(blob: Blob, maxWidth = 220): Promise<string> {
   });
 }
 
-type Backend    = 'gemini' | 'got';
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+type Backend    = 'gemini' | 'got' | 'texify';
 type Format     = 'markdown' | 'latex';
 type LangOption = 'none' | 'English' | 'Indonesian';
+type Rect       = { x: number; y: number; w: number; h: number };
 
 type ActionStatus =
   | { kind: 'idle' }
@@ -39,8 +49,9 @@ type ActionStatus =
   | { kind: 'error'; message: string };
 
 const BACKEND_OPTIONS = [
-  { value: 'gemini', label: 'Gemini Flash' },
-  { value: 'got',    label: 'GOT-OCR (local)' },
+  { value: 'gemini',  label: 'Gemini Flash' },
+  { value: 'got',     label: 'GOT-OCR (local)' },
+  { value: 'texify',  label: 'texify (equations)' },
 ];
 
 const FORMAT_OPTIONS = [
@@ -65,12 +76,36 @@ export default function OcrPanel() {
   const [displayResult, setDisplayResult] = useState<string | null>(null);
   const [isTranslated, setIsTranslated]   = useState(false);
 
-  const [status, setStatus] = useState<ActionStatus>({ kind: 'idle' });
+  const [status, setStatus]   = useState<ActionStatus>({ kind: 'idle' });
   const [dragging, setDragging] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
+  const [debugInfo, setDebugInfo] = useState<{
+    backend: Backend;
+    format: Format;
+    imageSize?: number;
+    imageType?: string;
+    cropRect?: Rect | null;
+    durationMs?: number;
+    resultLength?: number;
+    error?: string;
+  } | null>(null);
+  const [debugLogs, setDebugLogs] = useState<Array<{ step: string; msg: string; elapsed_ms: number }>>([]);
+  const [debugOpen, setDebugOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const ocrAbortRef = useRef<AbortController | null>(null);
 
-  const isBusy = status.kind === 'loading';
+  // ── Crop selection (texify mode) ──────────────────────────
+  const imgRef          = useRef<HTMLImageElement>(null);
+  const cropStartRef    = useRef<{ x: number; y: number } | null>(null);
+  const [cropRect, setCropRect]         = useState<Rect | null>(null);
+  const [cropDragging, setCropDragging] = useState(false);
+
+  const isBusy     = status.kind === 'loading';
+  const cropReady  = cropRect !== null && cropRect.w > 5 && cropRect.h > 5;
+
+  const cancelOcr = useCallback(() => {
+    ocrAbortRef.current?.abort();
+  }, []);
 
   const handleRestore = (item: HistoryItem) => {
     const d = item.data as { result: string; format: Format; backend: Backend };
@@ -80,20 +115,23 @@ export default function OcrPanel() {
     setBackend(d.backend ?? 'gemini');
     setIsTranslated(false);
     setStatus({ kind: 'idle' });
-    // Show thumbnail in drop zone
-    if (item.thumbnail) {
-      setImageUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return item.thumbnail!; });
-      setImage(null); // thumbnail only — can't re-OCR without re-uploading
+    setCropRect(null);
+    if (item.image || item.thumbnail) {
+      const url = item.image ?? item.thumbnail!;
+      setImageUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return url; });
+      setImage(null);
     }
   };
 
-  // ── Image loading ─────────────────────────────────────
+  // ── Image loading ──────────────────────────────────────────
   const loadImage = useCallback((blob: File | Blob) => {
     setImage(blob);
     setOcrResult(null);
     setDisplayResult(null);
     setIsTranslated(false);
     setStatus({ kind: 'idle' });
+    setCropRect(null);
+    setDebugInfo(null);
     setImageUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return URL.createObjectURL(blob);
@@ -110,6 +148,15 @@ export default function OcrPanel() {
     return () => window.removeEventListener('paste', handler);
   }, [loadImage]);
 
+  // Escape clears crop selection
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && cropRect) setCropRect(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [cropRect]);
+
   const onDragOver  = (e: React.DragEvent) => { e.preventDefault(); setDragging(true); };
   const onDragLeave = () => setDragging(false);
   const onDrop      = (e: React.DragEvent) => {
@@ -125,24 +172,118 @@ export default function OcrPanel() {
     setImage(null);
     setImageUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
     setOcrResult(null); setDisplayResult(null); setIsTranslated(false);
+    setCropRect(null);
+    setDebugInfo(null);
     setStatus({ kind: 'idle' });
   };
 
-  // ── Actions ────────────────────────────────────────────
+  // ── Crop mouse handlers ────────────────────────────────────
+  const handleCropMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isBusy) return;
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    cropStartRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    setCropRect(null);
+    setCropDragging(true);
+  };
+
+  const handleCropMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cropDragging || !cropStartRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+    const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+    const s = cropStartRef.current;
+    setCropRect({ x: Math.min(x, s.x), y: Math.min(y, s.y), w: Math.abs(x - s.x), h: Math.abs(y - s.y) });
+  };
+
+  const handleCropMouseUp = () => {
+    setCropDragging(false);
+    cropStartRef.current = null;
+  };
+
+  // ── Crop the image and return a blob ──────────────────────
+  const getCroppedBlob = async (): Promise<Blob | null> => {
+    if (!cropRect || !imgRef.current) return null;
+    if (cropRect.w < 5 || cropRect.h < 5) return null;
+    const img = imgRef.current;
+
+    // object-fit: contain may letterbox; compute actual rendered image rect
+    const dW = img.offsetWidth,  dH = img.offsetHeight;
+    const nW = img.naturalWidth, nH = img.naturalHeight;
+    const scale   = Math.min(dW / nW, dH / nH);
+    const rW      = nW * scale, rH = nH * scale;
+    const offX    = (dW - rW) / 2, offY = (dH - rH) / 2;
+
+    const srcX = Math.max(0, Math.round((cropRect.x - offX) / scale));
+    const srcY = Math.max(0, Math.round((cropRect.y - offY) / scale));
+    const srcW = Math.min(nW - srcX, Math.round(cropRect.w / scale));
+    const srcH = Math.min(nH - srcY, Math.round(cropRect.h / scale));
+    if (srcW < 1 || srcH < 1) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = srcW; canvas.height = srcH;
+    canvas.getContext('2d')!.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+    return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
+  };
+
+  // ── Actions ───────────────────────────────────────────────
   const handleOcr = async () => {
     if (!image) return;
     setStatus({ kind: 'loading', action: 'ocr' });
     setOcrResult(null); setDisplayResult(null); setIsTranslated(false);
+    setDebugLogs([{ step: 'client', msg: 'Sending request to backend…', elapsed_ms: 0 }]);
+    setDebugOpen(true);
+    const start = performance.now();
+    const imageSize = image.size;
+    const imageType = image.type || 'unknown';
+    ocrAbortRef.current = new AbortController();
     try {
-      const res = await ocrImage(image, backend, format);
+      let imageToOcr: File | Blob = image;
+      if (backend === 'texify' && cropReady) {
+        const cropped = await getCroppedBlob();
+        if (cropped) imageToOcr = cropped;
+      }
+      const res = await ocrImage(imageToOcr, backend, format, {
+        signal: ocrAbortRef.current.signal,
+        onLog: (entry) => setDebugLogs((prev) => [...prev, entry]),
+      });
+      const durationMs = Math.round(performance.now() - start);
       setOcrResult(res.result);
       setDisplayResult(res.result);
       setStatus({ kind: 'idle' });
-      const thumb = await generateThumbnail(image);
-      await addHistory('ocr', makeTitle(res.result), { result: res.result, format, backend }, thumb);
+      setDebugInfo({
+        backend,
+        format,
+        imageSize,
+        imageType,
+        cropRect: backend === 'texify' ? cropRect : null,
+        durationMs,
+        resultLength: res.result.length,
+      });
+      setDebugOpen(true);
+      const [thumb, fullImage] = await Promise.all([
+        generateThumbnail(image),
+        blobToDataUrl(image),
+      ]);
+      await addHistory('ocr', makeTitle(res.result), { result: res.result, format, backend }, thumb, fullImage);
       setHistoryKey((k) => k + 1);
     } catch (err) {
-      setStatus({ kind: 'error', message: err instanceof Error ? err.message : 'OCR failed' });
+      const durationMs = Math.round(performance.now() - start);
+      const errMsg = err instanceof Error ? err.message : 'OCR failed';
+      const isAborted = err instanceof Error && err.name === 'AbortError';
+      setStatus({ kind: 'error', message: isAborted ? 'Cancelled' : errMsg });
+      setDebugInfo({
+        backend,
+        format,
+        imageSize,
+        imageType,
+        cropRect: backend === 'texify' ? cropRect : null,
+        durationMs,
+        error: isAborted ? 'Cancelled' : errMsg,
+      });
+      setDebugOpen(true);
+    } finally {
+      ocrAbortRef.current = null;
     }
   };
 
@@ -180,7 +321,7 @@ export default function OcrPanel() {
     }
   };
 
-  // ── Render ─────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────
   return (
     <div className="ocr-panel">
 
@@ -188,13 +329,28 @@ export default function OcrPanel() {
       <div className="ocr-controls">
         <div className="ocr-selects">
           <label className="ocr-label">Backend</label>
-          <Select value={backend} options={BACKEND_OPTIONS} onChange={(v) => setBackend(v as Backend)} disabled={isBusy} />
-          <label className="ocr-label">Output</label>
           <Select
-            value={format} options={FORMAT_OPTIONS}
-            onChange={(v) => { setFormat(v as Format); setOcrResult(null); setDisplayResult(null); setIsTranslated(false); }}
+            value={backend}
+            options={BACKEND_OPTIONS}
+            onChange={(v) => {
+              setBackend(v as Backend);
+              if (v === 'texify') setFormat('latex');
+              setCropRect(null);
+            }}
             disabled={isBusy}
           />
+          {backend !== 'texify' ? (
+            <>
+              <label className="ocr-label">Output</label>
+              <Select
+                value={format} options={FORMAT_OPTIONS}
+                onChange={(v) => { setFormat(v as Format); setOcrResult(null); setDisplayResult(null); setIsTranslated(false); }}
+                disabled={isBusy}
+              />
+            </>
+          ) : (
+            <span className="ocr-texify-badge">LaTeX only · drag to select equation</span>
+          )}
           <label className="ocr-label">Translate to</label>
           <Select
             value={targetLang} options={LANG_OPTIONS}
@@ -202,10 +358,21 @@ export default function OcrPanel() {
             disabled={isBusy}
           />
         </div>
-        <button className="convert-btn" onClick={handleOcr} disabled={!image || isBusy}>
-          {status.kind === 'loading' && status.action === 'ocr' && <span className="spinner" />}
-          {status.kind === 'loading' && status.action === 'ocr' ? 'Running OCR…' : 'Run OCR'}
-        </button>
+        <div className="ocr-run-group">
+          <button className="convert-btn" onClick={handleOcr} disabled={!image || isBusy}>
+            {status.kind === 'loading' && status.action === 'ocr' && <span className="spinner" />}
+            {status.kind === 'loading' && status.action === 'ocr'
+              ? 'Running OCR…'
+              : backend === 'texify' && cropReady
+                ? 'OCR Selection'
+                : 'Run OCR'}
+          </button>
+          {status.kind === 'loading' && status.action === 'ocr' && (
+            <button type="button" className="ocr-cancel-btn" onClick={cancelOcr} title="Cancel OCR">
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Row 1: Image | Preview ── */}
@@ -219,7 +386,32 @@ export default function OcrPanel() {
         >
           {imageUrl ? (
             <>
-              <img src={imageUrl} alt="Input" className="ocr-preview-img" />
+              <div className="ocr-img-wrapper">
+                <img ref={imgRef} src={imageUrl} alt="Input" className="ocr-preview-img" draggable={false} />
+                {backend === 'texify' && (
+                  <>
+                    <div className={`ocr-crop-hint${cropReady ? ' crop-ready' : ''}`}>
+                      {cropReady
+                        ? 'Selection ready — click Run OCR, or drag to redraw · Esc to clear'
+                        : 'Drag to select equation region · Esc to clear'}
+                    </div>
+                    <div
+                      className={`ocr-crop-overlay${cropDragging ? ' cropping' : ''}`}
+                      onMouseDown={handleCropMouseDown}
+                      onMouseMove={handleCropMouseMove}
+                      onMouseUp={handleCropMouseUp}
+                      onMouseLeave={handleCropMouseUp}
+                    >
+                      {cropRect && cropRect.w > 2 && cropRect.h > 2 && (
+                        <div
+                          className="ocr-crop-selection"
+                          style={{ left: cropRect.x, top: cropRect.y, width: cropRect.w, height: cropRect.h }}
+                        />
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
               <button className="ocr-clear-btn" onClick={clearImage} title="Remove">✕</button>
             </>
           ) : (
@@ -300,6 +492,78 @@ export default function OcrPanel() {
       </div>
 
       <HistoryPanel tab="ocr" refreshKey={historyKey} onRestore={handleRestore} />
+
+      {(image || debugInfo) && (
+        <details
+          className="debug-section"
+          open={debugOpen}
+          onToggle={(e) => setDebugOpen((e.target as HTMLDetailsElement).open)}
+          style={{ marginTop: '1.5rem' }}
+        >
+          <summary>OCR Debug Info</summary>
+          <div className="debug-content">
+            {image && (
+              <div className="debug-formats">
+                <h4>Current State</h4>
+                <table className="debug-table">
+                  <tbody>
+                    <tr><td>Backend</td><td>{backend}</td></tr>
+                    <tr><td>Format</td><td>{format}</td></tr>
+                    <tr><td>Target language</td><td>{targetLang}</td></tr>
+                    <tr><td>Image size</td><td>{image.size.toLocaleString()} bytes</td></tr>
+                    <tr><td>Image type</td><td>{image.type || 'unknown'}</td></tr>
+                    {backend === 'texify' && cropRect && (
+                      <tr><td>Crop rect</td><td>x={cropRect.x} y={cropRect.y} w={cropRect.w} h={cropRect.h}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {debugInfo && (
+              <div className="debug-raw">
+                <h4>Last OCR Run</h4>
+                <table className="debug-table">
+                  <tbody>
+                    <tr><td>Backend</td><td>{debugInfo.backend}</td></tr>
+                    <tr><td>Format</td><td>{debugInfo.format}</td></tr>
+                    {debugInfo.imageSize != null && (
+                      <tr><td>Image size</td><td>{debugInfo.imageSize.toLocaleString()} bytes</td></tr>
+                    )}
+                    {debugInfo.durationMs != null && (
+                      <tr><td>Duration</td><td>{debugInfo.durationMs} ms</td></tr>
+                    )}
+                    {debugInfo.resultLength != null && (
+                      <tr><td>Result length</td><td>{debugInfo.resultLength} chars</td></tr>
+                    )}
+                    {debugInfo.error && (
+                      <tr><td>Error</td><td className="status-warn">{debugInfo.error}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {(debugLogs.length > 0 || (status.kind === 'loading' && status.action === 'ocr')) && (
+              <div className="debug-logs">
+                <h4>Process Log (live)</h4>
+                <div className="debug-logs-list">
+                  {debugLogs.map((log, i) => (
+                    <div key={i} className="debug-log-entry">
+                      <span className="debug-log-time">+{log.elapsed_ms} ms</span>
+                      <span className="debug-log-step">{log.step}</span>
+                      <span className="debug-log-msg">{log.msg}</span>
+                    </div>
+                  ))}
+                  {status.kind === 'loading' && status.action === 'ocr' && debugLogs.length === 0 && (
+                    <div className="debug-log-entry debug-log-pending">
+                      <span className="debug-log-msg">Waiting for backend…</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </details>
+      )}
 
     </div>
   );

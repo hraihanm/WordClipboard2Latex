@@ -31,9 +31,14 @@ export default function HistoryPanel({ tab, refreshKey, onRestore }: Props) {
   useEffect(() => { load(); }, [load, refreshKey]);
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
-    await deleteHistoryItem(id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    try {
+      await deleteHistoryItem(id);
+      setItems((prev) => prev.filter((i) => i.id !== id));
+    } catch {
+      // Keep item in list if delete failed
+    }
   };
 
   const handleClear = async () => {
@@ -66,20 +71,22 @@ export default function HistoryPanel({ tab, refreshKey, onRestore }: Props) {
         ) : (
           <div className="history-list">
             {items.map((item) => (
-              <div
-                key={item.id}
-                className="history-card"
-                onClick={() => onRestore(item)}
-                title="Click to restore"
-              >
-                {item.thumbnail && (
-                  <img src={item.thumbnail} className="history-thumb" alt="" />
-                )}
-                <div className="history-card-body">
-                  <p className="history-title">{item.title}</p>
-                  <p className="history-time">{formatTime(item.created_at)}</p>
+              <div key={item.id} className="history-card">
+                <div
+                  className="history-card-clickable"
+                  onClick={() => onRestore(item)}
+                  title="Click to restore"
+                >
+                  {item.thumbnail && (
+                    <img src={item.thumbnail} className="history-thumb" alt="" />
+                  )}
+                  <div className="history-card-body">
+                    <p className="history-title">{item.title}</p>
+                    <p className="history-time">{formatTime(item.created_at)}</p>
+                  </div>
                 </div>
                 <button
+                  type="button"
                   className="history-delete-btn"
                   onClick={(e) => handleDelete(item.id, e)}
                   title="Remove"

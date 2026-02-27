@@ -26,20 +26,32 @@ def init_db() -> None:
                 created_at  TEXT    NOT NULL,
                 title       TEXT    NOT NULL,
                 thumbnail   TEXT,
+                image       TEXT,
                 data        TEXT    NOT NULL
             )
         """)
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_tab_time ON history(tab, id DESC)"
         )
+        # Migration: add image column if missing (older DBs)
+        try:
+            conn.execute("ALTER TABLE history ADD COLUMN image TEXT")
+        except Exception:
+            pass
 
 
-def add_entry(tab: str, title: str, data: dict, thumbnail: str | None = None) -> int:
+def add_entry(
+    tab: str,
+    title: str,
+    data: dict,
+    thumbnail: str | None = None,
+    image: str | None = None,
+) -> int:
     created_at = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         cursor = conn.execute(
-            "INSERT INTO history (tab, created_at, title, thumbnail, data) VALUES (?,?,?,?,?)",
-            (tab, created_at, title, thumbnail, json.dumps(data)),
+            "INSERT INTO history (tab, created_at, title, thumbnail, image, data) VALUES (?,?,?,?,?,?)",
+            (tab, created_at, title, thumbnail, image, json.dumps(data)),
         )
         entry_id = cursor.lastrowid
         # Trim to MAX_PER_TAB oldest entries
@@ -55,7 +67,7 @@ def add_entry(tab: str, title: str, data: dict, thumbnail: str | None = None) ->
 def get_entries(tab: str, limit: int = MAX_PER_TAB) -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
-            "SELECT id, tab, created_at, title, thumbnail, data "
+            "SELECT id, tab, created_at, title, thumbnail, image, data "
             "FROM history WHERE tab = ? ORDER BY id DESC LIMIT ?",
             (tab, limit),
         ).fetchall()

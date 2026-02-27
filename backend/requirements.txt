@@ -7,5 +7,15 @@ python-multipart>=0.0.9
 google-genai>=1.0.0
 python-dotenv
 
-# GOT-OCR 2.0 (local backend) — install separately if needed:
-# pip install transformers torch tiktoken accelerate pillow
+# GOT-OCR 2.0 + texify (texify requires >=4.46,<5.0; GOT-OCR compatible)
+# PyTorch with CUDA 11.8 support (change index-url if you need different CUDA version)
+transformers>=4.46.0,<5.0.0
+torch>=2.0.0 --index-url https://download.pytorch.org/whl/cu118
+tiktoken>=0.5.0
+accelerate>=0.25.0
+pillow>=10.0.0
+
+# texify (equation-crop OCR, local backend) — requires transformers>=4.46,<5.0
+# texify>=0.2.1
+torchvision>=0.15.0 --index-url https://download.pytorch.org/whl/cu118
+verovio>=4.0.0

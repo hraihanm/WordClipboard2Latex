@@ -52,7 +52,7 @@ A local web application that bridges Microsoft Word and LaTeX/Markdown. Copy an 
 - **Windows 10 / 11** (clipboard access via `pywin32` is Windows-only)
 - **Python 3.10+**
 - **Node.js 18+**
-- **[Pandoc](https://pandoc.org/installing.html)** — must be on `PATH`
+- **[Pandoc](https://pandoc.org/installing.html)** — `start.bat` adds `C:\Program Files\Pandoc` to PATH automatically; edit `PANDOC_PATH` in `start.bat` if installed elsewhere
 - **Microsoft Word** — source or destination of clipboard content
 
 ---
@@ -64,6 +64,8 @@ A local web application that bridges Microsoft Word and LaTeX/Markdown. Copy an 
 ```bat
 start.bat
 ```
+
+`start.bat` creates a Python venv in `backend/venv`, installs dependencies, adds Pandoc to PATH, and starts both servers. For OCR (image → LaTeX), copy `backend/.env.example` to `backend/.env` and add your `GEMINI_API_KEY`.
 
 ### Linux / macOS (dev / WSL)
 
@@ -82,6 +84,9 @@ Open **http://localhost:5173** in your browser.
 
 ```bash
 cd backend
+python -m venv venv
+venv\Scripts\activate   # Windows
+# source venv/bin/activate  # Linux/macOS
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8741
 ```

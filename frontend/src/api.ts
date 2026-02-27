@@ -79,6 +79,7 @@ export interface HistoryItem {
   created_at: string;
   title: string;
   thumbnail?: string;
+  image?: string;
   data: Record<string, unknown>;
 }
 
@@ -93,17 +94,22 @@ export async function addHistory(
   title: string,
   data: Record<string, unknown>,
   thumbnail?: string,
+  image?: string,
 ): Promise<number> {
   const res = await fetch('/api/history', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tab, title, data, thumbnail }),
+    body: JSON.stringify({ tab, title, data, thumbnail, image }),
   });
   return (await res.json()).id;
 }
 
 export async function deleteHistoryItem(id: number): Promise<void> {
-  await fetch(`/api/history/item/${id}`, { method: 'DELETE' });
+  const res = await fetch(`/api/history/item/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Delete failed: ${res.status}`);
+  }
 }
 
 export async function clearHistory(tab: string): Promise<void> {
@@ -115,21 +121,92 @@ export interface OcrResult {
   backend: string;
 }
 
+export interface OcrLogEntry {
+  step: string;
+  msg: string;
+  elapsed_ms: number;
+}
+
+export interface OcrImageOptions {
+  signal?: AbortSignal;
+  onLog?: (entry: OcrLogEntry) => void;
+}
+
 export async function ocrImage(
   image: File | Blob,
-  backend: 'gemini' | 'got',
+  backend: 'gemini' | 'got' | 'texify',
   format: 'latex' | 'markdown' | 'text',
+  options?: OcrImageOptions,
 ): Promise<OcrResult> {
   const form = new FormData();
   form.append('image', image instanceof File ? image : new File([image], 'paste.png', { type: 'image/png' }));
   form.append('backend', backend);
   form.append('format', format);
-  const res = await fetch('/api/ocr', { method: 'POST', body: form });
+  form.append('stream', 'true');
+  const res = await fetch('/api/ocr', {
+    method: 'POST',
+    body: form,
+    signal: options?.signal,
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `Server error: ${res.status}`);
   }
+  if (res.headers.get('content-type')?.includes('text/event-stream')) {
+    return parseOcrStream(res, options?.onLog);
+  }
   return res.json();
+}
+
+async function parseOcrStream(
+  res: Response,
+  onLog?: (entry: OcrLogEntry) => void,
+): Promise<OcrResult> {
+  const reader = res.body?.getReader();
+  const decoder = new TextDecoder();
+  if (!reader) throw new Error('No response body');
+  let buffer = '';
+  let result: OcrResult | null = null;
+  let error: string | null = null;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split(/\n\n+/);
+    buffer = blocks.pop() ?? '';
+    for (const block of blocks) {
+      let eventType = '';
+      let data = '';
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+        else if (line.startsWith('data: ')) data = line.slice(6);
+      }
+      if (!data) continue;
+      if (eventType === 'log' && onLog) {
+        try {
+          onLog(JSON.parse(data) as OcrLogEntry);
+        } catch {
+          /* ignore */
+        }
+      } else if (eventType === 'result') {
+        try {
+          result = JSON.parse(data) as OcrResult;
+        } catch {
+          /* ignore */
+        }
+      } else if (eventType === 'error') {
+        try {
+          const err = JSON.parse(data) as { error?: string };
+          error = err.error ?? 'OCR failed';
+        } catch {
+          error = 'OCR failed';
+        }
+      }
+    }
+  }
+  if (error) throw new Error(error);
+  if (!result) throw new Error('No result from OCR stream');
+  return result;
 }
 
 export async function translateText(

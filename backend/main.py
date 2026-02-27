@@ -1,13 +1,17 @@
 """FastAPI application for Word2LaTeX clipboard converter."""
 
+import asyncio
+import json
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from queue import Empty, Queue
+from threading import Thread
 
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from clipboard import read_clipboard_debug
@@ -119,23 +123,79 @@ async def ocr_image(
     image: UploadFile = File(...),
     backend: str = Form("gemini"),
     format: str = Form("markdown"),
+    stream: str = Form("false"),
 ):
-    """OCR an uploaded image using Gemini API or GOT-OCR 2.0."""
+    """OCR an uploaded image using Gemini API or GOT-OCR 2.0.
+    When stream=true, returns Server-Sent Events with progress logs."""
     if format not in ("latex", "markdown", "text"):
         return JSONResponse(status_code=400, content={"error": f"Invalid format: {format!r}"})
-    if backend not in ("gemini", "got"):
+    if backend not in ("gemini", "got", "texify"):
         return JSONResponse(status_code=400, content={"error": f"Invalid backend: {backend!r}"})
-    try:
-        image_bytes = await image.read()
-        mime_type = image.content_type or "image/png"
-        from ocr_service import run_ocr
-        result = run_ocr(image_bytes, mime_type, backend, format)
-        return {"result": result, "backend": backend}
-    except Exception as e:
-        import traceback
-        detail = traceback.format_exc()
-        print(detail)  # visible in backend console
-        return JSONResponse(status_code=500, content={"error": str(e), "detail": detail})
+
+    use_stream = stream.lower() in ("true", "1", "yes")
+    image_bytes = await image.read()
+    mime_type = image.content_type or "image/png"
+
+    if not use_stream:
+        try:
+            from ocr_service import run_ocr
+            result = run_ocr(image_bytes, mime_type, backend, format)
+            return {"result": result, "backend": backend}
+        except Exception as e:
+            import traceback
+            detail = traceback.format_exc()
+            print(detail)
+            return JSONResponse(status_code=500, content={"error": str(e), "detail": detail})
+
+    # Streaming mode: run OCR in thread, stream logs via SSE
+    queue: Queue = Queue()
+
+    def log_cb(entry: dict) -> None:
+        queue.put(("log", entry))
+
+    def run_ocr_thread() -> None:
+        try:
+            log_cb({"step": "start", "msg": f"Request received ({len(image_bytes)} bytes), starting {backend}...", "elapsed_ms": 0})
+            from ocr_service import run_ocr
+            result = run_ocr(image_bytes, mime_type, backend, format, on_log=log_cb)
+            queue.put(("result", {"result": result, "backend": backend}))
+        except Exception as e:
+            import traceback
+            queue.put(("error", {"error": str(e), "detail": traceback.format_exc()}))
+        finally:
+            queue.put((None, None))
+
+    thread = Thread(target=run_ocr_thread)
+    thread.start()
+
+    def get_from_queue():
+        try:
+            return queue.get(timeout=0.2)
+        except Empty:
+            return ("_timeout", None)
+
+    async def event_generator():
+        loop = asyncio.get_event_loop()
+        while True:
+            kind, data = await loop.run_in_executor(None, get_from_queue)
+            if kind == "_timeout":
+                continue
+            if kind is None:
+                break
+            if kind == "log":
+                yield f"event: log\ndata: {json.dumps(data)}\n\n"
+            elif kind == "result":
+                yield f"event: result\ndata: {json.dumps(data)}\n\n"
+                break
+            elif kind == "error":
+                yield f"event: error\ndata: {json.dumps(data)}\n\n"
+                break
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/api/translate")
@@ -202,10 +262,11 @@ def add_history(body: dict):
     title     = body.get("title", "Untitled")
     data      = body.get("data", {})
     thumbnail = body.get("thumbnail")
+    image     = body.get("image")
     if not tab:
         return JSONResponse(status_code=400, content={"error": "tab required"})
     from history import add_entry
-    entry_id = add_entry(tab, title, data, thumbnail)
+    entry_id = add_entry(tab, title, data, thumbnail, image)
     return {"id": entry_id}
 
 

@@ -52,9 +52,15 @@ function App() {
       </nav>
 
       <main>
-        {activeTab === 'clipboard' && <ClipboardPanel pandocOk={pandocOk} />}
-        {activeTab === 'ocr'       && <OcrPanel />}
-        {activeTab === 'word'      && <ToWordPanel />}
+        <div className={activeTab === 'clipboard' ? 'tab-panel active' : 'tab-panel'} hidden={activeTab !== 'clipboard'}>
+          <ClipboardPanel pandocOk={pandocOk} />
+        </div>
+        <div className={activeTab === 'ocr' ? 'tab-panel active' : 'tab-panel'} hidden={activeTab !== 'ocr'}>
+          <OcrPanel />
+        </div>
+        <div className={activeTab === 'word' ? 'tab-panel active' : 'tab-panel'} hidden={activeTab !== 'word'}>
+          <ToWordPanel />
+        </div>
       </main>
     </div>
   );
