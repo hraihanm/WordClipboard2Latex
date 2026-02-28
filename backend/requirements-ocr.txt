@@ -1,0 +1,11 @@
+# GOT-OCR 2.0 local OCR backend
+# Install with: pip install -r requirements.txt -r requirements-ocr.txt
+-r requirements.txt
+
+# GOT-OCR 2.0 requirements
+# PyTorch with CUDA 11.8 support (change index-url if you need different CUDA version)
+transformers>=4.46.0,<5.0.0
+torch>=2.0.0 --index-url https://download.pytorch.org/whl/cu118
+tiktoken>=0.5.0
+accelerate>=0.25.0
+pillow>=10.0.0

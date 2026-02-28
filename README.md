@@ -65,7 +65,13 @@ A local web application that bridges Microsoft Word and LaTeX/Markdown. Copy an 
 start.bat
 ```
 
-`start.bat` creates a Python venv in `backend/venv`, installs dependencies, adds Pandoc to PATH, and starts both servers. For OCR (image → LaTeX), copy `backend/.env.example` to `backend/.env` and add your `GEMINI_API_KEY`.
+`start.bat` creates a Python venv in `backend/venv`, installs **core dependencies including Gemini API OCR**. For the Gemini API, copy `backend/.env.example` to `backend/.env` and add your `GEMINI_API_KEY`.
+
+For additional local OCR backends:
+- **GOT-OCR 2.0**: `pip install -r requirements-ocr.txt` (local, no API key needed)
+- **Texify**: `pip install -r requirements-texify.txt` (local, math-focused)
+
+Or install everything: `pip install -r requirements-dev.txt`
 
 ### Linux / macOS (dev / WSL)
 
@@ -87,7 +93,14 @@ cd backend
 python -m venv venv
 venv\Scripts\activate   # Windows
 # source venv/bin/activate  # Linux/macOS
+
+# Install core requirements (includes Gemini API OCR)
 pip install -r requirements.txt
+
+# Optionally add local OCR backends:
+# pip install -r requirements-ocr.txt      # GOT-OCR 2.0
+# pip install -r requirements-texify.txt   # texify
+
 uvicorn main:app --reload --port 8741
 ```
 
@@ -681,6 +694,8 @@ WordClipboard2LaTeX/
 
 ### Backend
 
+#### Core Requirements (includes Gemini API OCR)
+
 | Package | Purpose |
 |---|---|
 | `fastapi` | HTTP API framework |
@@ -689,6 +704,44 @@ WordClipboard2LaTeX/
 | `beautifulsoup4` | HTML parsing |
 | `lxml` | Fast HTML/XML parser backend for BS4 |
 | `pandoc` (system) | Math conversion (OMML ↔ LaTeX ↔ MathML) |
+| `google-genai` | Gemini API OCR (cloud-based) |
+| `python-dotenv` | Environment variable loading |
+
+#### Optional Local OCR Backends
+
+Add these for additional local OCR capabilities:
+
+**GOT-OCR 2.0** (fast, general-purpose):
+- `transformers>=4.46.0,<5.0.0`
+- `torch>=2.0.0` (with CUDA support)
+- `tiktoken>=0.5.0`
+- `accelerate>=0.25.0`
+- `pillow>=10.0.0`
+
+**Texify** (specialized for math equations):
+- `texify>=0.2.1`
+- `transformers>=4.46.0,<5.0.0`
+- `torch>=2.0.0` (with CUDA support)
+- `torchvision>=0.15.0`
+- `verovio>=4.0.0`
+
+#### Installation
+
+```bash
+cd backend
+
+# Core functionality (includes Gemini API OCR)
+pip install -r requirements.txt
+
+# Add GOT-OCR 2.0 (local OCR)
+pip install -r requirements-ocr.txt
+
+# Add texify (math equation OCR)
+pip install -r requirements-texify.txt
+
+# Or install everything for development
+pip install -r requirements-dev.txt
+```
 
 ### Frontend
 
