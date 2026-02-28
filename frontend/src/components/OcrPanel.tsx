@@ -37,7 +37,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-type Backend    = 'gemini' | 'got' | 'texify';
+type Backend    = 'gemini' | 'ollama' | 'got' | 'texify';
 type Format     = 'markdown' | 'latex';
 type LangOption = 'none' | 'English' | 'Indonesian';
 type Rect       = { x: number; y: number; w: number; h: number };
@@ -50,6 +50,7 @@ type ActionStatus =
 
 const BACKEND_OPTIONS = [
   { value: 'gemini',  label: 'Gemini Flash' },
+  { value: 'ollama',  label: 'Ollama (local/cloud)' },
   { value: 'got',     label: 'GOT-OCR (local)' },
   { value: 'texify',  label: 'texify (equations)' },
 ];
@@ -112,7 +113,7 @@ export default function OcrPanel() {
     setOcrResult(d.result);
     setDisplayResult(d.result);
     setFormat(d.format ?? 'markdown');
-    setBackend(d.backend ?? 'gemini');
+    setBackend((d.backend ?? 'gemini') as Backend);
     setIsTranslated(false);
     setStatus({ kind: 'idle' });
     setCropRect(null);

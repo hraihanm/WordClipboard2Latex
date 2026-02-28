@@ -134,7 +134,7 @@ export interface OcrImageOptions {
 
 export async function ocrImage(
   image: File | Blob,
-  backend: 'gemini' | 'got' | 'texify',
+  backend: 'gemini' | 'ollama' | 'got' | 'texify',
   format: 'latex' | 'markdown' | 'text',
   options?: OcrImageOptions,
 ): Promise<OcrResult> {
@@ -244,6 +244,27 @@ export async function exportDocx(text: string, format: 'markdown' | 'latex'): Pr
   a.download = 'output.docx';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export interface AppSettings {
+  ollama_base_url: string;
+  ollama_model: string;
+  gemini_api_key?: string;
+}
+
+export async function getSettings(): Promise<AppSettings> {
+  const res = await fetch('/api/settings');
+  if (!res.ok) throw new Error(`Settings: ${res.status}`);
+  return res.json();
+}
+
+export async function updateSettings(updates: Partial<AppSettings>): Promise<void> {
+  const res = await fetch('/api/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) throw new Error(`Settings update failed: ${res.status}`);
 }
 
 export async function clipboardInfo(): Promise<ClipboardInfo> {

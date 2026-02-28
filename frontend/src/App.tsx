@@ -3,6 +3,7 @@ import { healthCheck } from './api';
 import ClipboardPanel from './components/ClipboardPanel';
 import OcrPanel from './components/OcrPanel';
 import ToWordPanel from './components/ToWordPanel';
+import SettingsModal from './components/SettingsModal';
 import './App.css';
 
 type Tab = 'clipboard' | 'ocr' | 'word';
@@ -19,6 +20,7 @@ function App() {
   const [darkMode, setDarkMode]   = useState(() =>
     window.matchMedia('(prefers-color-scheme: dark)').matches
   );
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
@@ -33,6 +35,9 @@ function App() {
       <header>
         <h1>Word2LaTeX</h1>
         <div className="header-actions">
+          <button className="theme-toggle" onClick={() => setSettingsOpen(true)} title="Settings">
+            ⚙
+          </button>
           <button className="theme-toggle" onClick={() => setDarkMode(!darkMode)} title="Toggle theme">
             {darkMode ? '☀' : '☽'}
           </button>
@@ -62,6 +67,8 @@ function App() {
           <ToWordPanel />
         </div>
       </main>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
