@@ -1,10 +1,14 @@
-"""OCR service — Gemini API and GOT-OCR 2.0 backends."""
+"""OCR service — Gemini API, Ollama, GOT-OCR 2.0, and texify backends."""
 
 from __future__ import annotations
 
+import base64
+import json
 import os
 import tempfile
 import time
+import urllib.request
+import urllib.error
 import warnings
 from pathlib import Path
 from typing import Callable
@@ -69,6 +73,61 @@ def ocr_gemini(image_bytes: bytes, mime_type: str, fmt: str, on_log: Callable[[d
     if on_log:
         on_log({"step": "gemini_done", "msg": f"Gemini API completed ({len(response.text)} chars)", "elapsed_ms": round((time.perf_counter() - t_api) * 1000)})
     return response.text
+
+
+# ---------------------------------------------------------------------------
+# Ollama backend (local or remote API)
+# ---------------------------------------------------------------------------
+
+def ocr_ollama(image_bytes: bytes, mime_type: str, fmt: str, on_log: Callable[[dict], None] | None = None) -> str:
+    """OCR via Ollama vision API. Uses base_url and model from settings."""
+    from settings import get_all
+    settings = get_all()
+    base_url = (settings.get("ollama_base_url") or "http://localhost:11434").rstrip("/")
+    model = settings.get("ollama_model") or "llava"
+
+    t0 = time.perf_counter()
+    if on_log:
+        on_log({"step": "ollama_init", "msg": f"Connecting to {base_url} ({model})...", "elapsed_ms": 0})
+
+    img_b64 = base64.b64encode(image_bytes).decode("ascii")
+    prompt = PROMPTS[fmt]
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "user", "content": prompt, "images": [img_b64]},
+        ],
+        "stream": False,
+    }
+
+    req = urllib.request.Request(
+        f"{base_url}/api/chat",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            data = json.loads(resp.read().decode())
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            f"Ollama connection failed: {e.reason}. "
+            f"Ensure Ollama is running at {base_url} and model '{model}' is pulled (ollama pull {model})."
+        ) from e
+    except urllib.error.HTTPError as e:
+        body = e.read().decode() if e.fp else ""
+        raise RuntimeError(f"Ollama API error {e.code}: {body}") from e
+
+    if on_log:
+        on_log({"step": "ollama_done", "msg": "Ollama API completed", "elapsed_ms": round((time.perf_counter() - t0) * 1000)})
+
+    msg = data.get("message", {})
+    content = msg.get("content", "")
+    if not content:
+        raise RuntimeError("Ollama returned empty response")
+    return content.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -271,6 +330,8 @@ def ocr_texify(image_bytes: bytes, on_log: Callable[[dict], None] | None = None)
 def run_ocr(image_bytes: bytes, mime_type: str, backend: str, fmt: str, on_log: Callable[[dict], None] | None = None) -> str:
     if backend == "gemini":
         return ocr_gemini(image_bytes, mime_type, fmt, on_log)
+    elif backend == "ollama":
+        return ocr_ollama(image_bytes, mime_type, fmt, on_log)
     elif backend == "got":
         return ocr_got(image_bytes, fmt, on_log)
     elif backend == "texify":

@@ -18,9 +18,11 @@ from clipboard import read_clipboard_debug
 from converter import convert_clipboard, convert_html
 from to_clipboard import convert_to_clipboard
 from history import init_db
+from settings import init_settings, get_all, set_many
 
 app = FastAPI(title="Word2LaTeX", version="1.0.0")
 init_db()
+init_settings()
 
 app.add_middleware(
     CORSMiddleware,
@@ -129,7 +131,7 @@ async def ocr_image(
     When stream=true, returns Server-Sent Events with progress logs."""
     if format not in ("latex", "markdown", "text"):
         return JSONResponse(status_code=400, content={"error": f"Invalid format: {format!r}"})
-    if backend not in ("gemini", "got", "texify"):
+    if backend not in ("gemini", "ollama", "got", "texify"):
         return JSONResponse(status_code=400, content={"error": f"Invalid backend: {backend!r}"})
 
     use_stream = stream.lower() in ("true", "1", "yes")
@@ -248,6 +250,19 @@ def export_docx(body: dict):
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": 'attachment; filename="output.docx"'},
     )
+
+
+@app.get("/api/settings")
+def get_settings():
+    """Return all app settings (stored in DB)."""
+    return get_all()
+
+
+@app.put("/api/settings")
+def update_settings(body: dict):
+    """Update settings. Body: {key: value, ...}. Only known keys are stored."""
+    set_many(body)
+    return {"ok": True}
 
 
 @app.get("/api/history/{tab}")
