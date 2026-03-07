@@ -46,9 +46,12 @@ def convert_html(html: str) -> dict:
     for node in nodes:
         _convert_node(node, latex_parts, md_parts, html_parts, warnings)
 
+    markdown = "\n\n".join(p for p in md_parts if p.strip()).strip()
+    markdown = _fix_code_fence_spacing(markdown)
+
     return {
         "latex": "\n\n".join(p for p in latex_parts if p.strip()).strip(),
-        "markdown": "\n\n".join(p for p in md_parts if p.strip()).strip(),
+        "markdown": markdown,
         "html": "\n".join(p for p in html_parts if p.strip()).strip(),
         "warnings": warnings,
     }
@@ -131,6 +134,18 @@ def _convert_math(node: DocNode, warnings: list[str]) -> str:
     except Exception as e:
         warnings.append(f"Math conversion error: {e}")
         return ""
+
+
+def _fix_code_fence_spacing(md: str) -> str:
+    """Collapse blank lines inside fenced code blocks.
+
+    When Word/Slack HTML has each code line as a separate <p>, they get joined
+    with \\n\\n, producing blank lines inside the code fence. This removes them.
+    """
+    def collapse(m: re.Match) -> str:
+        return m.group(0).replace('\n\n', '\n')
+
+    return re.sub(r'```[^\n]*\n.*?```', collapse, md, flags=re.DOTALL)
 
 
 def _convert_cell(children: list[DocNode], warnings: list[str]) -> tuple[str, str, str]:

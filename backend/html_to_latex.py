@@ -21,6 +21,11 @@ def node_to_latex(node: DocNode) -> str:
     if node.type == NodeType.TEXT:
         if node.html:
             return html_to_latex(node.html)
+        # Fenced code block stored as Markdown ``` syntax → verbatim in LaTeX
+        if node.content.startswith("```"):
+            code = re.sub(r'^```[^\n]*\n?', '', node.content)
+            code = re.sub(r'\n?```$', '', code)
+            return f"\\begin{{verbatim}}\n{code}\n\\end{{verbatim}}"
         return _escape_latex(node.content)
 
     if node.type == NodeType.INLINE_MATH:
