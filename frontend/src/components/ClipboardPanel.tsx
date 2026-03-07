@@ -6,6 +6,7 @@ import CodeOutput from './CodeOutput';
 import CopyButton from './CopyButton';
 import Preview from './Preview';
 import HistoryPanel from './HistoryPanel';
+import Toast from './Toast';
 
 function makeTitle(text: string): string {
   return text.replace(/^#+\s*/gm, '').replace(/\*\*|__|_|\*/g, '').trim().split('\n')[0].slice(0, 70) || 'Untitled';
@@ -77,7 +78,7 @@ export default function ClipboardPanel({ pandocOk }: Props) {
         <p className="shortcut-hint">Ctrl+Shift+V to convert</p>
       </div>
 
-      {error && <div className="error-box">{error}</div>}
+      {error && <Toast message={error} onDismiss={() => setError(null)} />}
 
       {result && (
         <div className="output-grid">

@@ -187,6 +187,68 @@ header h1 {
   border-color: #7f1d1d;
 }
 
+/* ── Toast (fixed, non-layout-shifting errors) ── */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  max-width: min(380px, calc(100vw - 3rem));
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 0.875rem 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  animation: toast-slide-in 0.25s ease-out;
+  white-space: pre-wrap;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .toast {
+  background: #2d1212;
+  color: #fca5a5;
+  border-color: #7f1d1d;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.toast-message {
+  flex: 1;
+}
+
+.toast-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  margin: -0.25rem -0.25rem -0.25rem 0;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+
+.toast-dismiss:hover {
+  opacity: 1;
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ── Two-panel output grid ── */
 .output-grid {
   display: grid;
