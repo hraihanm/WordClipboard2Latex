@@ -18,7 +18,16 @@
       "Bash(netstat:*)",
       "Bash(venv/Scripts/python.exe:*)",
       "Bash(curl:*)",
-      "Bash(venv/Scripts/uvicorn.exe main:app:*)"
+      "Bash(venv/Scripts/uvicorn.exe main:app:*)",
+      "Bash(tasklist:*)",
+      "Bash(node:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd:*)",
+      "Bash(start cmd:*)",
+      "Bash(rm:*)",
+      "Bash(do taskkill:*)",
+      "Bash(wmic process:*)",
+      "Bash(cmd.exe:*)"
     ]
   }
 }

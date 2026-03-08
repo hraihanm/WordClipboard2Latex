@@ -146,6 +146,12 @@ export default function ClipboardPanel({ pandocOk }: Props) {
                 <pre className="debug-pre">{debugInfo.plain_text}</pre>
               </div>
             )}
+            {result && (
+              <div className="debug-raw">
+                <h4>Raw Markdown (from API)</h4>
+                <pre className="debug-pre">{result.markdown}</pre>
+              </div>
+            )}
           </div>
         </details>
       )}

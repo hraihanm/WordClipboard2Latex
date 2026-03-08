@@ -52,9 +52,10 @@ _MONOSPACE_FONTS = frozenset({
 # legitimately appears in Word document text.
 _INDENT_MARKER = "\ue000"
 
-# Matches the FULL content of a mso-spacerun:yes span (spaces + stray newlines)
+# Matches the FULL content of a mso-spacerun:yes span (spaces + nbsp + stray newlines)
+# Word often encodes indent as \xa0 (non-breaking space / &nbsp;) inside these spans.
 _SPACERUN_RE = re.compile(
-    r'(<span[^>]+mso-spacerun[^>]*>)([ \t\n\r]*)(</span>)',
+    r'(<span[^>]+mso-spacerun[^>]*>)([ \t\n\r\xa0]*)(</span>)',
     re.IGNORECASE | re.DOTALL,
 )
 
@@ -177,7 +178,9 @@ def _preserve_spacerun_indent(html: str) -> str:
     Newlines inside the span (HTML source formatting) are simply dropped.
     """
     def replace(m: re.Match) -> str:
-        spaces = m.group(2).count(' ')
+        # Count each space or non-breaking space (\xa0) as one indent unit.
+        # Newlines inside the span are HTML source formatting and are ignored.
+        spaces = sum(1 for c in m.group(2) if c in (' ', '\xa0'))
         return m.group(1) + (_INDENT_MARKER * spaces) + m.group(3)
 
     return _SPACERUN_RE.sub(replace, html)
