@@ -12,7 +12,13 @@
       "Bash(python3:*)",
       "Bash(cd:*)",
       "Bash(file:*)",
-      "Bash(./venv/Scripts/python:*)"
+      "Bash(./venv/Scripts/python:*)",
+      "Bash(./venv/Scripts/python:*)",
+      "Bash(python:*)",
+      "Bash(netstat:*)",
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(curl:*)",
+      "Bash(venv/Scripts/uvicorn.exe main:app:*)"
     ]
   }
 }

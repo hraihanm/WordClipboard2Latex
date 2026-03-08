@@ -538,21 +538,27 @@ def _extract_code_line_text(p_tag: Tag) -> str:
     """Extract one line of code text from a monospace paragraph.
 
     Before BS4 parsing, _preserve_spacerun_indent replaced each space in
-    mso-spacerun:yes spans with _INDENT_MARKER (\\x01).  Here we count leading
+    mso-spacerun:yes spans with _INDENT_MARKER (\\ue000).  Here we count leading
     markers as the indentation depth (converting back to spaces), then collapse
     any remaining internal whitespace in the content.
 
-    lxml's HTML parser may insert whitespace (spaces/tabs) between tags as
-    source-formatting noise, so we strip those before counting the markers.
+    If no markers are found (e.g. regex didn't match the multi-line span tag),
+    we fall back to counting the actual leading spaces in the raw text.
     """
     raw = p_tag.get_text().strip("\n\r")  # drop surrounding HTML newlines
     if not raw.strip(_INDENT_MARKER).strip():
         return ''
-    # Strip HTML-source spaces/tabs that precede the indent markers so they
-    # don't prevent lstrip(_INDENT_MARKER) from finding the real indentation.
-    trimmed = raw.lstrip(' \t')
-    inner = trimmed.lstrip(_INDENT_MARKER)
-    leading = len(trimmed) - len(inner)
+
+    if _INDENT_MARKER in raw:
+        # Preferred path: strip lxml-inserted HTML whitespace before the markers.
+        trimmed = raw.lstrip(' \t')
+        inner = trimmed.lstrip(_INDENT_MARKER)
+        leading = len(trimmed) - len(inner)
+    else:
+        # Fallback: _preserve_spacerun_indent may not have matched; count real spaces.
+        inner = raw.lstrip(' \t')
+        leading = len(raw) - len(inner)
+
     # Collapse remaining internal whitespace in the content
     content = re.sub(r'\s+', ' ', inner.lstrip()).strip()
     return ' ' * leading + content
@@ -706,6 +712,21 @@ def _extract_inline(
                     out.append(DocNode(type=NodeType.TEXT, content=text, html=str(child)))
 
 
+def _li_text_with_code(element: Tag | NavigableString) -> str:
+    """Extract text from a list item element, wrapping Courier New spans in backticks."""
+    if isinstance(element, NavigableString):
+        return str(element)
+    if not isinstance(element, Tag) or not element.name:
+        return ""
+    tag = element.name.lower()
+    if tag in ("ul", "ol"):
+        return ""  # nested lists are handled separately by _list_to_md_lines
+    if tag == "span" and _span_is_monospace(element):
+        text = element.get_text().strip()
+        return f"`{text}`" if text else ""
+    return "".join(_li_text_with_code(c) for c in element.children)
+
+
 def _handle_list(list_tag: Tag, nodes: list[DocNode]) -> None:
     """Convert a <ul>/<ol> element (with optional nested lists) to a TEXT node
     containing Markdown list syntax.  Nesting is rendered with 2-space indent
@@ -746,7 +767,7 @@ def _list_to_md_lines(list_tag: Tag, depth: int) -> list[str]:
                 elif isinstance(node, Tag) and node.name and node.name.lower() in ("ul", "ol"):
                     nested.append(node)
                 else:
-                    t = node.get_text()
+                    t = _li_text_with_code(node)
                     if t.strip():
                         item_parts.append(t)
 
