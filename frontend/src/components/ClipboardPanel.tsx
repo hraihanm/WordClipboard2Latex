@@ -20,8 +20,7 @@ export default function ClipboardPanel({ pandocOk }: Props) {
   const [result, setResult]       = useState<ConvertResult | null>(null);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
-  const [codeTab, setCodeTab]     = useState<TabKey>('markdown');
-  const [previewTab, setPreviewTab] = useState<TabKey>('markdown');
+  const [activeTab, setActiveTab] = useState<TabKey>('markdown');
   const [debugInfo, setDebugInfo] = useState<ClipboardInfo | null>(null);
   const [debugOpen, setDebugOpen] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
@@ -86,22 +85,22 @@ export default function ClipboardPanel({ pandocOk }: Props) {
             <div className="panel-header">
               <div className="panel-title-tabs">
                 <span className="panel-label">Code</span>
-                <OutputTabs activeTab={codeTab} onTabChange={setCodeTab} />
+                <OutputTabs activeTab={activeTab} onTabChange={setActiveTab} />
               </div>
-              <CopyButton text={result[codeTab]} />
+              <CopyButton text={result[activeTab]} />
             </div>
-            <CodeOutput content={result[codeTab]} language={langMap[codeTab]} />
+            <CodeOutput content={result[activeTab]} language={langMap[activeTab]} />
           </div>
 
           <div className="output-panel">
             <div className="panel-header">
               <div className="panel-title-tabs">
                 <span className="panel-label">Preview</span>
-                <OutputTabs activeTab={previewTab} onTabChange={setPreviewTab} />
+                <OutputTabs activeTab={activeTab} onTabChange={setActiveTab} />
               </div>
             </div>
             <div className="preview-wrapper">
-              <Preview content={result[previewTab]} mode={previewTab} />
+              <Preview content={result[activeTab]} mode={activeTab} />
             </div>
           </div>
         </div>
