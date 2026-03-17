@@ -461,6 +461,9 @@ def _handle_list_item_para(
             text_parts.append(text)
 
     text = " ".join(text_parts).strip()
+    # Collapse internal whitespace (including newlines from HTML source formatting)
+    # to preserve paragraph as single block — similar to Pandoc --wrap=preserve intent.
+    text = re.sub(r'\s+', ' ', text)
     # Strip leading bullet characters that survived (·, •, o, §, etc.)
     text = re.sub(r'^[·•◦▪▫○●◉◌▸▹▶▷‣⁃§o]\s*', '', text)
     if not text:
@@ -693,14 +696,14 @@ def _extract_inline(
             if xml:
                 out.append(DocNode(type=NodeType.INLINE_MATH, omml_xml=xml))
         elif tag_name in _FORMATTING_TAGS:
-            text = child.get_text()
-            if text.strip():
+            text = _normalize_text(child.get_text())
+            if text:
                 out.append(DocNode(type=NodeType.TEXT, content=text, html=str(child)))
         elif tag_name == "span" and _span_is_monospace(child):
             # Inline monospace span inside a normal paragraph → backtick code.
             # Use html="" so node_to_markdown returns content directly (no
             # re-parsing through html_to_markdown which doesn't know <code>).
-            text = child.get_text().strip()
+            text = _normalize_text(child.get_text())
             if text:
                 out.append(DocNode(type=NodeType.TEXT, content=f"`{text}`", html=""))
         else:
@@ -710,8 +713,8 @@ def _extract_inline(
             if inner_nodes:
                 out.extend(inner_nodes)
             else:
-                text = child.get_text()
-                if text.strip():
+                text = _normalize_text(child.get_text())
+                if text:
                     out.append(DocNode(type=NodeType.TEXT, content=text, html=str(child)))
 
 

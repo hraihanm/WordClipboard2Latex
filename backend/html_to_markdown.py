@@ -52,7 +52,9 @@ def node_to_markdown(node: DocNode) -> str:
 def _convert_element(element: Tag | NavigableString) -> str:
     """Recursively convert an HTML element to Markdown."""
     if isinstance(element, NavigableString):
-        return str(element)
+        s = str(element)
+        # Collapse internal whitespace (newlines from HTML source) to preserve paragraph
+        return re.sub(r'\s+', ' ', s) if s.strip() else s
 
     if not isinstance(element, Tag):
         return ""
