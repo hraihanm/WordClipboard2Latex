@@ -131,7 +131,7 @@ async def ocr_image(
     When stream=true, returns Server-Sent Events with progress logs."""
     if format not in ("latex", "markdown", "text"):
         return JSONResponse(status_code=400, content={"error": f"Invalid format: {format!r}"})
-    if backend not in ("gemini", "ollama", "got", "texify"):
+    if backend not in ("gemini", "ollama", "lmstudio", "got", "texify"):
         return JSONResponse(status_code=400, content={"error": f"Invalid backend: {backend!r}"})
 
     use_stream = stream.lower() in ("true", "1", "yes")

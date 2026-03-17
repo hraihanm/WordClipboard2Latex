@@ -250,6 +250,8 @@ export interface AppSettings {
   ollama_base_url: string;
   ollama_model: string;
   gemini_api_key?: string;
+  lmstudio_base_url: string;
+  lmstudio_model: string;
 }
 
 export async function getSettings(): Promise<AppSettings> {

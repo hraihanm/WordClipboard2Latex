@@ -26,24 +26,42 @@ export default function SettingsModal({ open, onClose }: Props) {
       getSettings()
         .then((s) => {
           setSettings(s);
-          setDraft({ ollama_base_url: s.ollama_base_url, ollama_model: s.ollama_model });
+          setDraft({
+            ollama_base_url: s.ollama_base_url,
+            ollama_model: s.ollama_model,
+            lmstudio_base_url: s.lmstudio_base_url,
+            lmstudio_model: s.lmstudio_model,
+          });
         })
         .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load settings'));
     }
   }, [open]);
 
   const handleSave = async () => {
-    const url = draft.ollama_base_url?.trim();
-    const model = draft.ollama_model?.trim();
-    if (!url || !model) {
+    const ollamaUrl   = draft.ollama_base_url?.trim();
+    const ollamaModel = draft.ollama_model?.trim();
+    const lmsUrl      = draft.lmstudio_base_url?.trim();
+    const lmsModel    = draft.lmstudio_model?.trim();
+    if (!ollamaUrl || !ollamaModel) {
       setError('Ollama URL and model are required');
       return;
     }
     setSaving(true);
     setError(null);
     try {
-      await updateSettings({ ollama_base_url: url, ollama_model: model });
-      setSettings((prev) => (prev ? { ...prev, ollama_base_url: url, ollama_model: model } : null));
+      await updateSettings({
+        ollama_base_url:   ollamaUrl,
+        ollama_model:      ollamaModel,
+        lmstudio_base_url: lmsUrl   || 'http://localhost:1234/v1',
+        lmstudio_model:    lmsModel || 'local-model',
+      });
+      setSettings((prev) =>
+        prev
+          ? { ...prev, ollama_base_url: ollamaUrl, ollama_model: ollamaModel,
+              lmstudio_base_url: lmsUrl || prev.lmstudio_base_url,
+              lmstudio_model:    lmsModel || prev.lmstudio_model }
+          : null,
+      );
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save');
@@ -89,6 +107,34 @@ export default function SettingsModal({ open, onClose }: Props) {
                 onChange={(e) => setDraft((d) => ({ ...d, ollama_model: e.target.value }))}
               />
               <span className="settings-hint">e.g. llava, llava:13b, gemma3, moondream</span>
+            </div>
+          </section>
+
+          <section className="settings-section" style={{ marginTop: '1.25rem' }}>
+            <h3>LM Studio API</h3>
+            <p className="settings-hint">
+              OpenAI-compatible local API. Load a vision model in LM Studio and start the server.
+            </p>
+            <div className="settings-field">
+              <label htmlFor="lms-url">Base URL</label>
+              <input
+                id="lms-url"
+                type="url"
+                placeholder="http://localhost:1234/v1"
+                value={draft.lmstudio_base_url ?? settings?.lmstudio_base_url ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, lmstudio_base_url: e.target.value }))}
+              />
+            </div>
+            <div className="settings-field">
+              <label htmlFor="lms-model">Model ID</label>
+              <input
+                id="lms-model"
+                type="text"
+                placeholder="local-model"
+                value={draft.lmstudio_model ?? settings?.lmstudio_model ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, lmstudio_model: e.target.value }))}
+              />
+              <span className="settings-hint">Copy the model identifier shown in LM Studio.</span>
             </div>
           </section>
           {error && <div className="settings-error">{error}</div>}

@@ -12,6 +12,8 @@ DEFAULTS = {
     "ollama_base_url": "http://localhost:11434",
     "ollama_model": "llava",
     "gemini_api_key": "",  # optional override; .env GEMINI_API_KEY takes precedence
+    "lmstudio_base_url": "http://localhost:1234/v1",
+    "lmstudio_model": "local-model",
 }
 
 

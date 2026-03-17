@@ -131,6 +131,71 @@ def ocr_ollama(image_bytes: bytes, mime_type: str, fmt: str, on_log: Callable[[d
 
 
 # ---------------------------------------------------------------------------
+# LM Studio backend (OpenAI-compatible vision API)
+# ---------------------------------------------------------------------------
+
+def ocr_lmstudio(image_bytes: bytes, mime_type: str, fmt: str, on_log: Callable[[dict], None] | None = None) -> str:
+    """OCR via LM Studio's OpenAI-compatible /v1/chat/completions endpoint."""
+    from settings import get_all
+    settings = get_all()
+    base_url = (settings.get("lmstudio_base_url") or "http://localhost:1234/v1").rstrip("/")
+    model = settings.get("lmstudio_model") or "local-model"
+
+    t0 = time.perf_counter()
+    if on_log:
+        on_log({"step": "lmstudio_init", "msg": f"Connecting to LM Studio at {base_url} ({model})...", "elapsed_ms": 0})
+
+    img_b64 = base64.b64encode(image_bytes).decode("ascii")
+    data_url = f"data:{mime_type};base64,{img_b64}"
+
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": PROMPTS[fmt]},
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                ],
+            }
+        ],
+        "max_tokens": 4096,
+        "stream": False,
+    }
+
+    req = urllib.request.Request(
+        f"{base_url}/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            data = json.loads(resp.read().decode())
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            f"LM Studio connection failed: {e.reason}. "
+            f"Ensure LM Studio is running at {base_url} with a vision model loaded."
+        ) from e
+    except urllib.error.HTTPError as e:
+        body = e.read().decode() if e.fp else ""
+        raise RuntimeError(f"LM Studio API error {e.code}: {body}") from e
+
+    if on_log:
+        on_log({"step": "lmstudio_done", "msg": "LM Studio API completed", "elapsed_ms": round((time.perf_counter() - t0) * 1000)})
+
+    try:
+        content = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError) as e:
+        raise RuntimeError(f"Unexpected LM Studio response format: {data}") from e
+
+    if not content:
+        raise RuntimeError("LM Studio returned empty response")
+    return content.strip()
+
+
+# ---------------------------------------------------------------------------
 # GOT-OCR 2.0 backend (local, lazy-loaded)
 # ---------------------------------------------------------------------------
 
@@ -332,6 +397,8 @@ def run_ocr(image_bytes: bytes, mime_type: str, backend: str, fmt: str, on_log: 
         return ocr_gemini(image_bytes, mime_type, fmt, on_log)
     elif backend == "ollama":
         return ocr_ollama(image_bytes, mime_type, fmt, on_log)
+    elif backend == "lmstudio":
+        return ocr_lmstudio(image_bytes, mime_type, fmt, on_log)
     elif backend == "got":
         return ocr_got(image_bytes, fmt, on_log)
     elif backend == "texify":
