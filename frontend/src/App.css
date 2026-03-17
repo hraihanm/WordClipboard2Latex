@@ -480,7 +480,6 @@ header h1 {
 
 /* ── HTML preview ── */
 .preview-html {
-  all: initial;
   display: block;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 0.9rem;
@@ -488,15 +487,88 @@ header h1 {
   color: var(--text);
 }
 
-.preview-html img {
-  max-width: 100%;
-  height: auto;
+.preview-html p { margin: 0.5rem 0; }
+
+.preview-html h1,
+.preview-html h2,
+.preview-html h3,
+.preview-html h4,
+.preview-html h5,
+.preview-html h6 {
+  margin: 0.9rem 0 0.4rem;
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--text);
 }
+.preview-html h1 { font-size: 1.5rem; }
+.preview-html h2 { font-size: 1.25rem; }
+.preview-html h3 { font-size: 1.1rem; }
+.preview-html h4,
+.preview-html h5,
+.preview-html h6 { font-size: 1rem; }
+
+.preview-html ul,
+.preview-html ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+.preview-html li { margin: 0.2rem 0; }
+
+.preview-html strong, .preview-html b { font-weight: 700; }
+.preview-html em, .preview-html i    { font-style: italic; }
+.preview-html u                      { text-decoration: underline; }
+
+.preview-html code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.85em;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.1rem 0.3rem;
+}
+
+.preview-html pre {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
+}
+
+.preview-html pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 1em;
+}
+
+.preview-html blockquote {
+  border-left: 3px solid var(--border);
+  margin: 0.5rem 0;
+  padding: 0.25rem 0.75rem;
+  color: var(--text-muted);
+}
+
+.preview-html img { max-width: 100%; height: auto; }
+
+.preview-html hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1rem 0;
+}
+
+.preview-html a { color: #2563eb; }
 
 .preview-html table {
   border-collapse: collapse;
   width: 100%;
   margin: 0.5rem 0;
+  font-size: 0.9rem;
 }
 
 .preview-html th,
@@ -511,9 +583,79 @@ header h1 {
   font-weight: 600;
 }
 
+/* MathML rendered by Pandoc inside the HTML tab */
+.preview-html math { font-size: 1.05em; }
+
 /* ── LaTeX preview ── */
 .preview-latex {
-  line-height: 2;
+  line-height: 1.8;
+}
+
+.preview-latex p { margin: 0.5rem 0; }
+
+.preview-latex h1,
+.preview-latex h2,
+.preview-latex h3,
+.preview-latex h4,
+.preview-latex h5,
+.preview-latex h6 {
+  margin: 1rem 0 0.45rem;
+  line-height: 1.3;
+  font-weight: 700;
+}
+.preview-latex h1 { font-size: 1.5rem; }
+.preview-latex h2 { font-size: 1.25rem; }
+.preview-latex h3 { font-size: 1.1rem; }
+.preview-latex h4,
+.preview-latex h5,
+.preview-latex h6 { font-size: 1rem; }
+
+.preview-latex ul,
+.preview-latex ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+.preview-latex li { margin: 0.2rem 0; }
+
+.preview-latex dl { margin: 0.5rem 0; }
+.preview-latex dt { font-weight: 600; margin-top: 0.4rem; }
+.preview-latex dd { margin-left: 1.5rem; }
+
+.preview-latex code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.85em;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.1rem 0.3rem;
+}
+
+.preview-latex pre {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
+}
+
+.preview-latex pre code { background: none; border: none; padding: 0; }
+
+.preview-latex blockquote {
+  border-left: 3px solid var(--border);
+  margin: 0.5rem 0;
+  padding: 0.25rem 0.75rem;
+  color: var(--text-muted);
+}
+
+.preview-latex hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1rem 0;
 }
 
 /* ── Section divider ── */
@@ -1294,6 +1436,67 @@ header h1 {
   box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.25);
   pointer-events: none;
   box-sizing: border-box;
+}
+
+/* ── PDF panel ── */
+.pdf-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  width: 100%;
+}
+
+.pdf-icon {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  background: #dc2626;
+  color: white;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.pdf-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.pdf-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pdf-pages {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.pdf-page-range {
+  width: 110px;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+}
+
+.pdf-page-range:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 /* ── Debug section ── */

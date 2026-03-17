@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import { healthCheck } from './api';
 import ClipboardPanel from './components/ClipboardPanel';
 import OcrPanel from './components/OcrPanel';
+import PdfPanel from './components/PdfPanel';
 import ToWordPanel from './components/ToWordPanel';
 import SettingsModal from './components/SettingsModal';
 import './App.css';
 
-type Tab = 'clipboard' | 'ocr' | 'word';
+type Tab = 'clipboard' | 'ocr' | 'pdf' | 'word';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'clipboard', label: 'Clipboard → Text' },
   { key: 'ocr',       label: 'Image → OCR' },
+  { key: 'pdf',       label: 'PDF → OCR' },
   { key: 'word',      label: 'Text → Word' },
 ];
 
@@ -62,6 +64,9 @@ function App() {
         </div>
         <div className={activeTab === 'ocr' ? 'tab-panel active' : 'tab-panel'} hidden={activeTab !== 'ocr'}>
           <OcrPanel />
+        </div>
+        <div className={activeTab === 'pdf' ? 'tab-panel active' : 'tab-panel'} hidden={activeTab !== 'pdf'}>
+          <PdfPanel />
         </div>
         <div className={activeTab === 'word' ? 'tab-panel active' : 'tab-panel'} hidden={activeTab !== 'word'}>
           <ToWordPanel />
