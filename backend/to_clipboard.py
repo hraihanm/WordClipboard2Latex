@@ -82,6 +82,33 @@ _LEADING_SPACE_IN_TEXT_RE = re.compile(r'\\text\{ ')
 _DISPLAY_MATH_RE = re.compile(r'\$\$(.*?)\$\$', re.DOTALL)
 _INLINE_MATH_RE = re.compile(r'(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)')
 
+_PRE_TAG_RE  = re.compile(r'<pre\b([^>]*?)>', re.IGNORECASE)
+_CODE_TAG_RE = re.compile(r'<code\b([^>]*?)>', re.IGNORECASE)
+
+_PRE_STYLE = (
+    "font-family: Consolas, 'Courier New', monospace; "
+    "font-size: 9pt; "
+    "background-color: #f5f5f5; "
+    "padding: 6pt; "
+    "border: 0.5pt solid #cccccc; "
+    "margin: 6pt 0; "
+    "white-space: pre-wrap;"
+)
+_CODE_STYLE = "font-family: Consolas, 'Courier New', monospace; font-size: 9pt;"
+
+
+def _apply_word_html_styles(html: str) -> str:
+    """Inject inline monospace styles into <pre>/<code> so Word renders code blocks correctly."""
+    html = _PRE_TAG_RE.sub(
+        lambda m: f'<pre{m.group(1)} style="{_PRE_STYLE}">',
+        html,
+    )
+    html = _CODE_TAG_RE.sub(
+        lambda m: f'<code{m.group(1)} style="{_CODE_STYLE}">',
+        html,
+    )
+    return html
+
 
 def _fix_math_spacing(math: str) -> str:
     """Replace spacing commands before \\text{} with ~ inside \\text{}."""
@@ -211,6 +238,8 @@ def convert_to_clipboard(text: str, fmt: str) -> dict:
         )
     except Exception as exc:
         raise RuntimeError(f"Conversion failed: {exc}")
+
+    html_fragment = _apply_word_html_styles(html_fragment)
 
     # ── Write CF_HTML to clipboard ────────────────────────────────────────────
     win32clipboard.OpenClipboard()
