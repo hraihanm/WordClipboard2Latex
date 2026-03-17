@@ -234,13 +234,13 @@ def export_docx(body: dict):
     try:
         result = subprocess.run(
             ["pandoc", "-f", fmt, "-t", "docx", "-o", str(tmp_path)],
-            input=text,
-            text=True,
+            input=text.encode("utf-8"),
             capture_output=True,
             timeout=30,
         )
         if result.returncode != 0:
-            return JSONResponse(status_code=500, content={"error": result.stderr or "Pandoc failed"})
+            stderr = result.stderr.decode("utf-8", errors="replace")
+            return JSONResponse(status_code=500, content={"error": stderr or "Pandoc failed"})
         docx_bytes = tmp_path.read_bytes()
     finally:
         tmp_path.unlink(missing_ok=True)
