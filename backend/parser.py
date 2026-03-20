@@ -8,6 +8,17 @@ from enum import Enum
 
 from bs4 import BeautifulSoup, NavigableString, Tag
 
+# Lazy imports for OMML conversion in list items (avoids heavy deps at parse start)
+def _omml_to_inline_latex(xml: str) -> str:
+    """Convert OMML XML to inline LaTeX ($...$). Returns empty string on failure."""
+    try:
+        from omml_to_latex import omml_to_latex
+        from postprocess import postprocess_latex
+        latex = omml_to_latex(xml)
+        return postprocess_latex(latex).strip()
+    except Exception:
+        return ""
+
 
 class NodeType(str, Enum):
     TEXT = "text"
@@ -445,25 +456,34 @@ def _handle_list_item_para(
     """
     text_parts: list[str] = []
     for child in p_tag.descendants:
-        if not isinstance(child, NavigableString):
-            continue
-        # Skip text inside Symbol-font spans (bullet glyphs like ·, o, §)
-        parent = child.parent
-        if isinstance(parent, Tag):
-            pstyle = parent.get("style", "").lower()
-            if "font-family:symbol" in pstyle.replace(" ", ""):
-                continue
-            # Skip mso-spacerun spans (just list indentation noise)
-            if "mso-spacerun" in pstyle:
-                continue
-        text = str(child).replace(_INDENT_MARKER, "").strip()
-        if text:
-            text_parts.append(text)
+        if isinstance(child, NavigableString):
+            # Skip text inside Symbol-font spans (bullet glyphs like ·, o, §)
+            parent = child.parent
+            if isinstance(parent, Tag):
+                pstyle = parent.get("style", "").lower()
+                if "font-family:symbol" in pstyle.replace(" ", ""):
+                    continue
+                # Skip mso-spacerun spans (just list indentation noise)
+                if "mso-spacerun" in pstyle:
+                    continue
+            text = str(child).replace(_INDENT_MARKER, "").strip()
+            if text:
+                text_parts.append(text)
+        elif isinstance(child, Tag) and child.name and child.name.lower() == "omml-inline":
+            # Inline math (e.g. h, p, f in "Ukuran objek (h) = 108,6 m")
+            block_id = child.get("data-id", "")
+            xml = inline_blocks.get(block_id, "")
+            if xml:
+                latex = _omml_to_inline_latex(xml)
+                if latex:
+                    text_parts.append(f"${latex}$")
 
     text = " ".join(text_parts).strip()
     # Collapse internal whitespace (including newlines from HTML source formatting)
     # to preserve paragraph as single block — similar to Pandoc --wrap=preserve intent.
     text = re.sub(r'\s+', ' ', text)
+    # Remove spaces around inline math inside parentheses: " ( $h$ ) " → " ($h$) "
+    text = re.sub(r'\(\s*(\$[^$]+\$)\s*\)', r'(\1)', text)
     # Strip leading bullet characters that survived (·, •, o, §, etc.)
     text = re.sub(r'^[·•◦▪▫○●◉◌▸▹▶▷‣⁃§o]\s*', '', text)
     if not text:
