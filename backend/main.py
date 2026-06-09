@@ -216,6 +216,86 @@ def translate(body: dict):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+@app.get("/api/convert/quiz")
+def convert_quiz(preset: str = "astro_dev_id"):
+    """Read the clipboard and convert quiz-formatted Word HTML to quiz markdown.
+
+    Query params:
+      preset  — "astro_dev_id" (default) or "generic"
+    """
+    from clipboard import read_clipboard_html
+    from quiz_parser import (
+        parse_quiz_clipboard,
+        render_astro_dev_id,
+        render_generic,
+    )
+
+    html = read_clipboard_html()
+    if not html:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Clipboard is empty or does not contain HTML data."},
+        )
+
+    result = parse_quiz_clipboard(html)
+    quiz_md = render_astro_dev_id(result) if preset == "astro_dev_id" else render_generic(result)
+
+    return {
+        "quiz_markdown": quiz_md,
+        "question_count": len(result.questions),
+        "questions": [
+            {
+                "number": q.number,
+                "stem": q.stem,
+                "options": q.options,
+                "answer_label": q.answer_label,
+                "solution_body": q.solution_body,
+            }
+            for q in result.questions
+        ],
+        "warnings": result.warnings,
+        "preset": preset,
+    }
+
+
+@app.post("/api/convert/quiz")
+def convert_quiz_text(body: dict):
+    """Accept raw HTML and convert to quiz markdown (for testing without clipboard).
+
+    Body: ``{"html": "...", "preset": "astro_dev_id" | "generic"}``
+    """
+    from quiz_parser import (
+        parse_quiz_clipboard,
+        render_astro_dev_id,
+        render_generic,
+    )
+
+    html = body.get("html", "")
+    preset = body.get("preset", "astro_dev_id")
+    if not html:
+        return JSONResponse(status_code=400, content={"error": "No HTML provided"})
+
+    result = parse_quiz_clipboard(html)
+    quiz_md = render_astro_dev_id(result) if preset == "astro_dev_id" else render_generic(result)
+
+    return {
+        "quiz_markdown": quiz_md,
+        "question_count": len(result.questions),
+        "questions": [
+            {
+                "number": q.number,
+                "stem": q.stem,
+                "options": q.options,
+                "answer_label": q.answer_label,
+                "solution_body": q.solution_body,
+            }
+            for q in result.questions
+        ],
+        "warnings": result.warnings,
+        "preset": preset,
+    }
+
+
 @app.post("/api/export/docx")
 def export_docx(body: dict):
     """Convert Markdown or LaTeX to a .docx file via Pandoc and return it for download."""
@@ -249,6 +329,57 @@ def export_docx(body: dict):
         content=docx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": 'attachment; filename="output.docx"'},
+    )
+
+
+@app.post("/api/quiz/to-clipboard")
+def quiz_to_clipboard(body: dict):
+    """Convert quiz markdown to Word clipboard (CF_HTML with paragraph styles).
+
+    Body: ``{"text": "...", "preset": "astro_dev_id"}``
+    """
+    from quiz_to_word import quiz_md_to_clipboard
+
+    text = body.get("text", "").strip()
+    if not text:
+        return JSONResponse(status_code=400, content={"error": "No text provided"})
+    try:
+        result = quiz_md_to_clipboard(text)
+        return result
+    except FileNotFoundError:
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Pandoc is not installed or not on PATH."},
+        )
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/api/quiz/to-docx")
+def quiz_to_docx(body: dict):
+    """Convert quiz markdown to a .docx file via Pandoc and return it for download.
+
+    Body: ``{"text": "...", "reference_doc": "/path/to/template.docx" | null}``
+    """
+    from quiz_to_word import quiz_md_to_docx_bytes
+
+    text = body.get("text", "").strip()
+    reference_doc = body.get("reference_doc") or None
+    if not text:
+        return JSONResponse(status_code=400, content={"error": "No text provided"})
+    if not shutil.which("pandoc"):
+        return JSONResponse(status_code=500, content={"error": "Pandoc is not installed"})
+    try:
+        docx_bytes = quiz_md_to_docx_bytes(text, reference_doc)
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+    return Response(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": 'attachment; filename="quiz.docx"'},
     )
 
 

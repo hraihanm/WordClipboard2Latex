@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 
 interface Props {
   text: string;
+  /** Use inside <summary> so click does not toggle the parent <details>. */
+  inSummary?: boolean;
 }
 
-export default function CopyButton({ text }: Props) {
+export default function CopyButton({ text, inSummary }: Props) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = async () => {
+  const doCopy = async () => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -25,8 +27,19 @@ export default function CopyButton({ text }: Props) {
     }
   };
 
+  const onMouseDown = inSummary
+    ? (e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()
+    : undefined;
+
+  const onClick = inSummary
+    ? (e: MouseEvent<HTMLButtonElement>) => {
+        e.stopPropagation();
+        void doCopy();
+      }
+    : () => void doCopy();
+
   return (
-    <button className="copy-btn" onClick={handleCopy} disabled={!text}>
+    <button type="button" className="copy-btn" onMouseDown={onMouseDown} onClick={onClick} disabled={!text}>
       {copied ? 'Copied!' : 'Copy'}
     </button>
   );

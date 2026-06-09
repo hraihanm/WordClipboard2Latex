@@ -4,16 +4,18 @@ import ClipboardPanel from './components/ClipboardPanel';
 import OcrPanel from './components/OcrPanel';
 import PdfPanel from './components/PdfPanel';
 import ToWordPanel from './components/ToWordPanel';
+import QuizPanel from './components/QuizPanel';
 import SettingsModal from './components/SettingsModal';
 import './App.css';
 
-type Tab = 'clipboard' | 'ocr' | 'pdf' | 'word';
+type Tab = 'clipboard' | 'ocr' | 'pdf' | 'word' | 'quiz';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'clipboard', label: 'Clipboard → Text' },
   { key: 'ocr',       label: 'Image → OCR' },
   { key: 'pdf',       label: 'PDF → OCR' },
   { key: 'word',      label: 'Text → Word' },
+  { key: 'quiz',      label: 'Quiz → Markdown' },
 ];
 
 function App() {
@@ -70,6 +72,9 @@ function App() {
         </div>
         <div className={activeTab === 'word' ? 'tab-panel active' : 'tab-panel'} hidden={activeTab !== 'word'}>
           <ToWordPanel />
+        </div>
+        <div className={activeTab === 'quiz' ? 'tab-panel active' : 'tab-panel'} hidden={activeTab !== 'quiz'}>
+          <QuizPanel />
         </div>
       </main>
 

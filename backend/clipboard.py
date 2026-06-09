@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 
 import win32clipboard
+from bs4 import BeautifulSoup
 
 
 CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
@@ -18,6 +19,32 @@ _KNOWN_FORMATS: dict[int, str] = {
     16: "CF_LOCALE",
     CF_HTML: "HTML Format",
 }
+
+
+def _strip_cf_html_prefix(text: str) -> str:
+    """Strip CF_HTML metadata so the string starts at the HTML document."""
+    if not text:
+        return text
+    lower = text.lower()
+    idx = lower.find("<html")
+    if idx == -1:
+        for line in text.splitlines():
+            if line.startswith("StartHTML:"):
+                try:
+                    idx = int(line.split(":", 1)[1].strip())
+                except ValueError:
+                    idx = -1
+                break
+    return text[idx:] if idx >= 0 else text
+
+
+def _extract_html_body_inner(html_doc: str) -> str:
+    """Inner HTML of <body>, or document contents if no body tag."""
+    soup = BeautifulSoup(html_doc, "lxml")
+    body = soup.body
+    if body:
+        return body.decode_contents()
+    return soup.decode_contents()
 
 
 def _open_clipboard(retries: int = 5, delay: float = 0.05) -> None:
@@ -69,10 +96,20 @@ def read_clipboard_debug() -> dict:
 
         has_html = any(f["name"] == "HTML Format" for f in formats)
 
+        raw_html_body = ""
+        if raw_html and raw_html != "(failed to read)":
+            doc = _strip_cf_html_prefix(raw_html)
+            if doc.strip():
+                try:
+                    raw_html_body = _extract_html_body_inner(doc)
+                except Exception:
+                    raw_html_body = "(failed to parse body)"
+
         return {
             "formats": formats,
             "has_html": has_html,
             "raw_html": raw_html,
+            "raw_html_body": raw_html_body,
             "plain_text": plain_text,
         }
     except Exception as e:
@@ -80,6 +117,7 @@ def read_clipboard_debug() -> dict:
             "formats": [],
             "has_html": False,
             "raw_html": "",
+            "raw_html_body": "",
             "plain_text": "",
             "error": str(e),
         }
@@ -99,16 +137,7 @@ def read_clipboard_html() -> str | None:
             return None
         raw: bytes = win32clipboard.GetClipboardData(CF_HTML)
         text = raw.decode("utf-8", errors="replace")
-        # CF_HTML has a header like "Version:0.9\nStartHTML:..."
-        # The actual HTML starts after "StartHTML:<offset>"
-        idx = text.find("<html") if "<html" in text.lower() else text.find("<HTML")
-        if idx == -1:
-            # fallback: look for StartHTML offset
-            for line in text.splitlines():
-                if line.startswith("StartHTML:"):
-                    idx = int(line.split(":")[1])
-                    break
-        return text[idx:] if idx >= 0 else text
+        return _strip_cf_html_prefix(text)
     except Exception:
         return None
     finally:

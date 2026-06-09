@@ -47,6 +47,8 @@ export interface ClipboardInfo {
   formats: ClipboardFormat[];
   has_html: boolean;
   raw_html: string;
+  /** Inner HTML of &lt;body&gt; from CF_HTML (no head / wrapper). */
+  raw_html_body: string;
   plain_text: string;
   error?: string;
 }
@@ -267,6 +269,83 @@ export async function updateSettings(updates: Partial<AppSettings>): Promise<voi
     body: JSON.stringify(updates),
   });
   if (!res.ok) throw new Error(`Settings update failed: ${res.status}`);
+}
+
+// ── Quiz conversion ──────────────────────────────────────────
+export interface QuizQuestionData {
+  number: number;
+  stem: string;
+  options: string[];
+  answer_label: string;
+  solution_body: string;
+}
+
+export interface QuizResult {
+  quiz_markdown: string;
+  question_count: number;
+  questions: QuizQuestionData[];
+  warnings: string[];
+  preset: string;
+}
+
+export interface QuizToWordResult {
+  question_count: number;
+  formats_written: string[];
+  warnings: string[];
+}
+
+export async function quizToClipboard(text: string): Promise<QuizToWordResult> {
+  const res = await fetch('/api/quiz/to-clipboard', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function quizToDocx(text: string, referenceDoc?: string): Promise<void> {
+  const res = await fetch('/api/quiz/to-docx', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, reference_doc: referenceDoc ?? null }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error: ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'quiz.docx';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function convertQuiz(preset: 'astro_dev_id' | 'generic' = 'astro_dev_id'): Promise<QuizResult> {
+  const res = await fetch(`/api/convert/quiz?preset=${preset}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function convertQuizText(html: string, preset: 'astro_dev_id' | 'generic' = 'astro_dev_id'): Promise<QuizResult> {
+  const res = await fetch('/api/convert/quiz', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ html, preset }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error: ${res.status}`);
+  }
+  return res.json();
 }
 
 export async function clipboardInfo(): Promise<ClipboardInfo> {

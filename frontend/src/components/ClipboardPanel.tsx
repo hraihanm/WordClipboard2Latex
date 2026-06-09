@@ -112,7 +112,11 @@ export default function ClipboardPanel({ pandocOk }: Props) {
         <details
           className="debug-section"
           open={debugOpen}
-          onToggle={(e) => setDebugOpen((e.target as HTMLDetailsElement).open)}
+          onToggle={(e) => {
+            // toggle bubbles from nested <details>; only sync state for this panel
+            if (e.target !== e.currentTarget) return;
+            setDebugOpen((e.currentTarget as HTMLDetailsElement).open);
+          }}
           style={{ marginTop: '1.5rem' }}
         >
           <summary>Clipboard Debug Info</summary>
@@ -135,22 +139,27 @@ export default function ClipboardPanel({ pandocOk }: Props) {
                   : 'No HTML Format — only plain text available'}
               </p>
             </div>
-            <div className="debug-raw">
-              <h4>Raw Clipboard HTML</h4>
-              <pre className="debug-pre">{debugInfo.raw_html || '(empty)'}</pre>
+            <div className="debug-raw debug-raw-body">
+              <div className="debug-raw-header">
+                <h4>Raw clipboard body</h4>
+                <CopyButton text={debugInfo.raw_html_body ?? ''} />
+              </div>
+              <pre className="debug-pre">{debugInfo.raw_html_body || '(empty)'}</pre>
             </div>
-            {debugInfo.plain_text && (
-              <div className="debug-raw">
+            <details className="debug-raw debug-raw-clipboard">
+              <summary>
+                <span className="debug-raw-clipboard-title">Raw clipboard</span>
+                <CopyButton text={debugInfo.raw_html} inSummary />
+              </summary>
+              <pre className="debug-pre">{debugInfo.raw_html || '(empty)'}</pre>
+            </details>
+            <div className="debug-raw debug-raw-body">
+              <div className="debug-raw-header">
                 <h4>Plain Text</h4>
-                <pre className="debug-pre">{debugInfo.plain_text}</pre>
+                <CopyButton text={debugInfo.plain_text} />
               </div>
-            )}
-            {result && (
-              <div className="debug-raw">
-                <h4>Raw Markdown (from API)</h4>
-                <pre className="debug-pre">{result.markdown}</pre>
-              </div>
-            )}
+              <pre className="debug-pre">{debugInfo.plain_text || '(empty)'}</pre>
+            </div>
           </div>
         </details>
       )}

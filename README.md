@@ -264,7 +264,7 @@ Returns backend and Pandoc status.
 
 #### `GET /api/clipboard-info`
 
-Debug endpoint. Returns all clipboard formats currently available plus the raw HTML and plain text content.
+Debug endpoint. Returns all clipboard formats currently available, raw CF_HTML (`raw_html`), inner HTML of the document body (`raw_html_body`), and plain text.
 
 ```json
 {
@@ -274,6 +274,7 @@ Debug endpoint. Returns all clipboard formats currently available plus the raw H
   ],
   "has_html": true,
   "raw_html": "...",
+  "raw_html_body": "...",
   "plain_text": "..."
 }
 ```
