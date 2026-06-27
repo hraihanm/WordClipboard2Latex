@@ -66,6 +66,128 @@ function QuizCard({ q }: { q: QuizQuestionData }) {
   );
 }
 
+// ── Demo source ──────────────────────────────────────────────────────────
+const DEMO_MD = `\
+---
+
+## Sebuah bintang memiliki suhu permukaan $T = 6{,}000\\ \\mathrm{K}$ dan radius $R = 2{,}0\\ R_\\odot$. Luminositas bintang dinyatakan oleh hukum Stefan–Boltzmann:
+
+$$
+L = 4\\pi R^2 \\sigma T^4
+$$
+
+Jika luminositas Matahari $L_\\odot$ diperoleh saat $R = R_\\odot$ dan $T = T_\\odot$, maka luminositas bintang ini dalam satuan $L_\\odot$ adalah\\ldots
+
+### $L \\approx 16\\ L_\\odot$
+### $L \\approx 4\\ L_\\odot$
+### $L \\approx 8\\ L_\\odot$
+### $L \\approx 64\\ L_\\odot$
+
+<solution_title> Jawaban: A
+
+Karena $T = T_\\odot$, kontribusi suhu hilang, dan:
+
+$$
+\\frac{L}{L_\\odot} = \\left(\\frac{R}{R_\\odot}\\right)^2 = (2{,}0)^2 = \\boxed{4\\ L_\\odot}
+$$
+
+Jadi jawabannya **A**. \\textbf{Catatan:} kita menggunakan $T = T_\\odot$ agar faktor $T^4$ saling menghilangkan.
+
+---
+
+## Perhatikan persamaan kesetimbangan hidrostatik berikut:
+
+\\begin{align}
+\\frac{dP}{dr} &= -\\frac{G M(r) \\rho(r)}{r^2}
+\\end{align}
+
+Dari persamaan ini, \\emph{arah perubahan tekanan} terhadap jari-jari $r$ di dalam bintang adalah\\ldots
+
+### Tekanan \\textbf{berkurang} ke arah luar, $dP/dr < 0$
+### Tekanan bertambah ke arah luar, $dP/dr > 0$
+### Tekanan konstan di seluruh interior, $dP/dr = 0$
+### Tekanan bergantung pada komposisi kimia, bukan posisi
+
+<solution_title> Jawaban: A
+
+Karena $G$, $M(r)$, $\\rho(r)$, dan $r^2$ semuanya positif, tanda minus memastikan:
+
+$$\\frac{dP}{dr} < 0$$
+
+Tekanan \\textbf{berkurang} ke arah luar (atau \\emph{bertambah} ke arah pusat) — inilah yang menopang bintang melawan gravitasi.
+
+---
+
+## Tabel berikut menunjukkan sifat empat kelas bintang deret utama. Bintang manakah yang memiliki luminositas terbesar?
+
+\\begin{tabular}{lccc}
+\\hline
+Kelas & $T_\\mathrm{eff}$ (K) & $R/R_\\odot$ & $L/L_\\odot$ \\\\
+\\hline
+O5 & $42{,}000$ & $12$ & $8 \\times 10^5$ \\\\
+B0 & $30{,}000$ & $7$ & $5 \\times 10^4$ \\\\
+A0 & $10{,}000$ & $2{,}4$ & $54$ \\\\
+G2 (Matahari) & $5{,}778$ & $1{,}0$ & $1{,}0$ \\\\
+\\hline
+\\end{tabular}
+
+### Bintang kelas O5
+### Bintang kelas B0
+### Bintang kelas A0
+### Bintang kelas G2
+
+<solution_title> Jawaban: A
+
+Dari tabel, bintang kelas \\textbf{O5} memiliki $L/L_\\odot = 8 \\times 10^5$ — jauh melampaui kelas lainnya.
+
+Ini konsisten dengan $L \\propto R^2 T^4$: bintang O5 \\emph{lebih besar dan lebih panas} secara bersamaan, sehingga luminositasnya meledak secara eksponensial.
+
+---
+
+## Hukum pergeseran Wien menyatakan $\\lambda_\\max T = b$ dengan $b = 2{,}898 \\times 10^6\\ \\mathrm{nm \\cdot K}$. Berapakah $\\lambda_\\max$ untuk Matahari ($T_\\odot = 5{,}778\\ \\mathrm{K}$)?
+
+### $\\lambda_\\max \\approx 501\\ \\mathrm{nm}$ (hijau–kuning)
+### $\\lambda_\\max \\approx 483\\ \\mathrm{nm}$ (biru–hijau)
+### $\\lambda_\\max \\approx 620\\ \\mathrm{nm}$ (merah–oranye)
+### $\\lambda_\\max \\approx 380\\ \\mathrm{nm}$ (ultraviolet)
+
+<solution_title> Jawaban: A
+
+$$
+\\lambda_\\max = \\frac{2{,}898 \\times 10^6\\ \\mathrm{nm \\cdot K}}{5{,}778\\ \\mathrm{K}} \\approx \\boxed{501\\ \\mathrm{nm}}
+$$
+
+Panjang gelombang ini berada di spektrum \\emph{hijau–kuning} — bukan kebetulan bahwa mata manusia paling sensitif tepat di kisaran ini.
+
+---
+
+## Terdapat empat proses di dalam bintang deret utama:
+
+\\begin{enumerate}[(a)]
+  \\item Fusi hidrogen menjadi helium di inti ($T \\sim 10^7\\ \\mathrm{K}$)
+  \\item Transfer energi dari inti ke selubung via konveksi atau radiasi
+  \\item Pancaran foton dari fotosfer ke ruang angkasa
+  \\item Reaksi fisi nuklir di selubung luar
+\\end{enumerate}
+
+Proses manakah yang \\textbf{tidak} terjadi pada bintang deret utama?
+
+### (a) saja
+### (b) dan (c)
+### (d) saja
+### (a), (b), dan (c)
+
+<solution_title> Jawaban: C
+
+Proses (a)–(c) adalah mekanisme inti bintang deret utama:
+
+- \\textbf{Fusi hidrogen} menghasilkan energi di inti
+- \\textbf{Konveksi/radiasi} mentransfer energi ke permukaan
+- \\textbf{Emisi foton} melepas energi ke ruang angkasa
+
+\\emph{Reaksi fisi} (d) \\textbf{tidak} terjadi di bintang deret utama — fisi adalah pemecahan inti berat (reaktor nuklir / senjata), bukan sumber energi bintang.
+`;
+
 // ── Markdown → Word: to-word panel ──────────────────────────────────────
 
 function ToWordSection() {
@@ -117,12 +239,21 @@ function ToWordSection() {
         converts correctly; paragraph styles require a reference template.
       </p>
 
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.35rem' }}>
+        <button
+          className="btn-secondary"
+          style={{ fontSize: '0.78rem', padding: '2px 10px' }}
+          onClick={() => setText(DEMO_MD)}
+        >
+          Load demo
+        </button>
+      </div>
       <textarea
         className="code-output"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={'---\n\n## Problem stem with $math$\n\n### Option A\n### Option B\n\n<solution_title> Jawaban: A\n\nSolution body...\n\n---'}
-        rows={12}
+        rows={14}
         style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.8rem', resize: 'vertical', marginBottom: '0.75rem' }}
       />
 
