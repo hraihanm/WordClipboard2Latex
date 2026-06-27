@@ -236,12 +236,146 @@ function renderLatex(container: HTMLDivElement, latex: string) {
 
 /* ── Markdown mode ── */
 
+// ---------------------------------------------------------------------------
+// MathPix-style LaTeX pre-passes (mirrors latex-preprocessor.ts in astro-dev-id)
+// ---------------------------------------------------------------------------
+
+/** Pass 1: text-mode \textbf / \emph → bold/italic; {,} → , outside math */
+function applyTextModeCommands(text: string): string {
+  let out = text
+    .replace(/\\textbf\{([^{}]*)\}/g, '**$1**')
+    .replace(/\\emph\{([^{}]*)\}/g, '*$1*')
+    .replace(/\\text\{([^{}]*)\}/g, '$1');
+  out = out.split(/(\$\$[\s\S]*?\$\$|\$[^$\n]+?\$)/).map((p, i) =>
+    i % 2 === 0 ? p.replace(/\{,\}/g, ',') : p
+  ).join('');
+  return out;
+}
+
+const ENUMERATE_TYPE: Record<string, string> = {
+  a: 'a', 'a.': 'a', 'a)': 'a', '(a)': 'a',
+  A: 'A', 'A.': 'A', 'A)': 'A', '(A)': 'A',
+  i: 'i', 'i.': 'i', 'i)': 'i', '(i)': 'i',
+  I: 'I', 'I.': 'I', 'I)': 'I', '(I)': 'I',
+  '1': '1', '1.': '1', '1)': '1', '(1)': '1',
+};
+
+function convertItems(body: string, tag: 'ul' | 'ol'): string {
+  const parts = body.split(/\\item(?:\[([^\]]*)\])?/);
+  const items: string[] = [];
+  for (let i = 1; i < parts.length; i += 2) {
+    const label = parts[i] as string | undefined;
+    const content = (marked.parse((parts[i + 1] ?? '').trim(), { async: false }) as string)
+      .replace(/^<p>([\s\S]*?)<\/p>$/, '$1').trimEnd();
+    if (!content && label === undefined) continue;
+    if (tag === 'ul' && label !== undefined) {
+      items.push(`<li><strong>${label.trim()}</strong> ${content}</li>`);
+    } else {
+      items.push(`<li>${content}</li>`);
+    }
+  }
+  return items.join('\n');
+}
+
+function convertListEnv(envName: string, optArg: string | undefined, body: string): string {
+  const isEnum = envName === 'enumerate';
+  const tag: 'ol' | 'ul' = isEnum ? 'ol' : 'ul';
+  let typeAttr = '';
+  if (isEnum && optArg) {
+    const opt = optArg.slice(1, -1).trim();
+    const type = ENUMERATE_TYPE[opt];
+    if (type) typeAttr = ` type="${type}"`;
+  }
+  return `<${tag}${typeAttr} class="latex-list">\n${convertItems(body, tag)}\n</${tag}>`;
+}
+
+function convertTabular(spec: string, body: string): string {
+  const aligns: string[] = [];
+  for (let i = 0; i < spec.length; ) {
+    const ch = spec[i];
+    if (ch === 'l') { aligns.push('text-left'); i++; }
+    else if (ch === 'c') { aligns.push('text-center'); i++; }
+    else if (ch === 'r') { aligns.push('text-right'); i++; }
+    else if (ch === 'p') { const c = spec.indexOf('}', i); aligns.push('text-left'); i = c !== -1 ? c + 1 : spec.length; }
+    else i++;
+  }
+  const normalized = body.replace(/\\(?:toprule|midrule|bottomrule)/g, '\\hline');
+  const rows = normalized.split(/\\\\/).map(rawRow => {
+    let row = rawRow.trim();
+    if (!row) return '';
+    let borderTop = false;
+    while (row.startsWith('\\hline')) { borderTop = true; row = row.slice(6).trim(); }
+    if (!row) return '';
+    const tds = row.split('&').map((cell, idx) => {
+      const align = aligns[idx] ?? 'text-left';
+      return `<td class="${align}" style="padding:2px 8px">${(marked.parseInline(cell.trim(), { async: false }) as string)}</td>`;
+    }).join('');
+    return `<tr${borderTop ? ' style="border-top:1px solid #ccc"' : ''}>${tds}</tr>`;
+  }).filter(Boolean);
+  return `<div style="overflow-x:auto;margin:0.75rem 0"><table style="border-collapse:collapse;font-size:0.9em"><tbody>${rows.join('\n')}</tbody></table></div>`;
+}
+
+/** Pass 2: \begin{enumerate/itemize/tabular} → HTML (innermost-first) */
+function applyLatexEnvironments(text: string): string {
+  let current = text;
+  for (let pass = 0; pass < 10; pass++) {
+    let changed = false;
+    // Lists
+    current = current.replace(
+      /\\begin\{(enumerate|itemize)\}(\[[^\]]*\])?([\s\S]*?)\\end\{\1\}/g,
+      (full, envName, optArg, body) => {
+        if (/\\begin\{(?:enumerate|itemize)\}/.test(body)) return full; // not innermost
+        changed = true;
+        return convertListEnv(envName, optArg, body);
+      }
+    );
+    // Tabular
+    current = current.replace(
+      /\\begin\{tabular\}\{([^}]*)\}([\s\S]*?)\\end\{tabular\}/g,
+      (full, spec, body) => {
+        if (/\\begin\{tabular\}/.test(body)) return full;
+        changed = true;
+        return convertTabular(spec, body);
+      }
+    );
+    if (!changed) break;
+  }
+  return current;
+}
+
+const MATH_ENVS = new Set([
+  'equation', 'equation*', 'align', 'align*', 'alignat', 'alignat*',
+  'gather', 'gather*', 'gathered', 'aligned', 'alignedat',
+  'multline', 'multline*', 'split', 'cases', 'dcases', 'rcases',
+  'array', 'darray', 'matrix', 'pmatrix', 'bmatrix', 'Bmatrix',
+  'vmatrix', 'Vmatrix', 'smallmatrix', 'CD',
+]);
+
+/** Pass 3: bare \begin{align}…\end{align} → $$…$$ (skips already-wrapped $$) */
+function applyBareMathEnvs(text: string): string {
+  return text.split(/(\$\$[\s\S]*?\$\$)/).map((p, i) => {
+    if (i % 2 !== 0) return p;
+    return p.replace(
+      /\\begin\{([a-zA-Z]+\*?)\}([\s\S]*?)\\end\{\1\}/g,
+      (match, env: string) => {
+        if (!MATH_ENVS.has(env)) return match;
+        return `$$${match.replace(/\\label\{[^}]+\}/g, '').trim()}$$`;
+      }
+    );
+  }).join('');
+}
+
 function renderMarkdown(container: HTMLDivElement, md: string) {
+  // Pre-passes: text-mode commands, LaTeX environments, bare math envs
+  let processed = applyTextModeCommands(md);
+  processed = applyLatexEnvironments(processed);
+  processed = applyBareMathEnvs(processed);
+
   const mathStore: { idx: number; tex: string; display: boolean }[] = [];
   let nextIdx = 0;
 
   // Extract $$...$$ display math
-  let processed = md.replace(/\$\$([\s\S]*?)\$\$/g, (_match, inner) => {
+  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (_match, inner) => {
     const i = nextIdx++;
     mathStore.push({ idx: i, tex: inner.trim(), display: true });
     return `<span data-math-id="${i}"></span>`;

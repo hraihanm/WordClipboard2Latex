@@ -34,8 +34,35 @@ from to_clipboard import (
     _preprocess_math_spacing,
 )
 
-# Pandoc input format for markdown+LaTeX math
-_MD_FMT = "markdown+tex_math_dollars+tex_math_single_backslash"
+# Pandoc input format: math delimiters + raw LaTeX pass-through
+# raw_tex lets pandoc handle \textbf{}, \emph{}, \begin{enumerate}[(a)] etc. in text
+_MD_FMT = "markdown+tex_math_dollars+tex_math_single_backslash+raw_tex"
+
+_DISPLAY_MATH_RE_WP = re.compile(r'\$\$([\s\S]*?)\$\$')
+_INLINE_MATH_RE_WP  = re.compile(r'\$([^$\n]+?)\$')
+
+
+def _preprocess_latex_text(text: str) -> str:
+    """Convert MathPix-style text-mode LaTeX to pandoc-compatible markdown.
+
+    Runs outside-math segments only:
+    - {,} → ,   (LaTeX decimal-comma notation used in e.g. 2{,}898)
+    """
+    parts = _DISPLAY_MATH_RE_WP.split(text)
+    # split gives: [text, math, text, math, ...] with 1 math group per separator
+    out: list[str] = []
+    for i, part in enumerate(parts):
+        if i % 2 == 1:
+            out.append(f'$${part}$$')
+            continue
+        # outside display math — also skip inline math
+        segments = _INLINE_MATH_RE_WP.split(part)
+        for j, seg in enumerate(segments):
+            if j % 2 == 1:
+                out.append(f'${seg}$')
+            else:
+                out.append(seg.replace('{,}', ','))
+    return ''.join(out)
 
 # Matches a single Pandoc-generated <p> wrapper (including attributes Pandoc may add)
 _P_OPEN_RE = re.compile(r"^<p(?:\s[^>]*)?>", re.IGNORECASE)
@@ -127,7 +154,7 @@ def _para_to_html(text: str, css_class: str) -> str:
     Pandoc's generic <p> wrapper with one that carries the correct Word
     paragraph-style class.
     """
-    text = _preprocess_math_spacing(text, "markdown")
+    text = _preprocess_latex_text(_preprocess_math_spacing(text, "markdown"))
     raw = _pandoc(text, _MD_FMT, "html", ["--mathml", "--wrap=none"]).strip()
     raw = _fix_math_spacing(raw)
     # Replace Pandoc's outer <p> with the class-annotated version
@@ -146,7 +173,7 @@ def _solution_body_to_html(solution_body: str) -> str:
     <p> and <li> with class="Solution" so Word applies the named style to
     both plain paragraphs and list items.
     """
-    body = _preprocess_math_spacing(solution_body, "markdown")
+    body = _preprocess_latex_text(_preprocess_math_spacing(solution_body, "markdown"))
     raw = _pandoc(body, _MD_FMT, "html", ["--mathml", "--wrap=none"])
     raw = _fix_math_spacing(raw)
     # Annotate every <p> and <li> tag
@@ -289,7 +316,7 @@ def quiz_md_to_docx_bytes(quiz_md: str, reference_doc: str | None = None) -> byt
     if not questions:
         raise ValueError("No questions found in the provided quiz markdown.")
 
-    pandoc_md = _to_pandoc_custom_style_md(questions)
+    pandoc_md = _preprocess_latex_text(_to_pandoc_custom_style_md(questions))
 
     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
         tmp_path = Path(tmp.name)
