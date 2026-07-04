@@ -21,9 +21,15 @@ bound to nothing and exports came out unstyled.
 - **Numbered stems** — each problem is prefixed with its 1-based number.
 - **Fidelity** — LaTeX math converts to **native Word equations (OMML)**; confirmed
   by tests inspecting `word/document.xml`.
-- **API + UI** — `/api/quiz/to-docx` accepts `include_solutions`, `use_template`
-  and a sanitised `filename`; the Quiz panel gains solutions / styled-template
-  checkboxes and a filename field.
+- **Custom template upload** — `/api/quiz/to-docx` is now `multipart/form-data`
+  and accepts an uploaded `.docx` whose named styles override the bundled template
+  (validated as a real zip/docx); the Quiz panel gains an "Upload .docx…" control.
+- **API + UI** — the endpoint accepts `include_solutions`, `use_template` and a
+  sanitised `filename`; the Quiz panel gains solutions / styled-template checkboxes
+  and a filename field.
+- **Fix** — disable Pandoc's `yaml_metadata_block` so a `---` thematic break inside
+  a stem/solution (or between questions) is no longer misread as a YAML front-matter
+  block, which previously aborted the whole conversion with a YAML parse error.
 
 ## 2026-06-10
 

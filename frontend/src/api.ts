@@ -311,7 +311,8 @@ export interface QuizToDocxOptions {
   includeSolutions?: boolean;
   useTemplate?: boolean;
   filename?: string;
-  referenceDoc?: string;
+  /** Optional uploaded .docx whose named styles override the bundled template. */
+  templateFile?: File | null;
 }
 
 export async function quizToDocx(text: string, opts: QuizToDocxOptions = {}): Promise<void> {
@@ -319,18 +320,17 @@ export async function quizToDocx(text: string, opts: QuizToDocxOptions = {}): Pr
     includeSolutions = true,
     useTemplate = true,
     filename = 'quiz',
-    referenceDoc,
+    templateFile = null,
   } = opts;
+  const fd = new FormData();
+  fd.append('text', text);
+  fd.append('include_solutions', String(includeSolutions));
+  fd.append('use_template', String(useTemplate));
+  fd.append('filename', filename);
+  if (templateFile) fd.append('template', templateFile, templateFile.name);
   const res = await fetch('/api/quiz/to-docx', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text,
-      include_solutions: includeSolutions,
-      use_template: useTemplate,
-      filename,
-      reference_doc: referenceDoc ?? null,
-    }),
+    body: fd, // browser sets multipart/form-data + boundary
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

@@ -80,3 +80,56 @@ def test_worksheet_omits_solutions():
 def test_empty_markdown_raises():
     with pytest.raises(ValueError):
         quiz_md_to_docx_bytes("")
+
+
+def test_thematic_break_in_solution_survives():
+    """A `---` rule in a solution body must not be misread as a YAML block."""
+    md = (
+        "## Soal dengan garis pemisah?\n\n"
+        "- (A) x\n- (B) y\n\n"
+        "### Jawaban\nA\n\n"
+        "### Pembahasan\nBagian pertama.\n\n---\n\nBagian kedua."
+    )
+    out = quiz_md_to_docx_bytes(md)
+    assert out[:2] == b"PK"
+
+
+# --- endpoint (multipart) --------------------------------------------------
+
+def _client():
+    from fastapi.testclient import TestClient
+    from main import app
+    return TestClient(app)
+
+
+def test_endpoint_worksheet_multipart():
+    r = _client().post(
+        "/api/quiz/to-docx",
+        data={"text": QUIZ_MD, "include_solutions": "false", "filename": "my sheet"},
+    )
+    assert r.status_code == 200
+    assert r.content[:2] == b"PK"
+    assert 'filename="my sheet.docx"' in r.headers.get("content-disposition", "")
+    styles = _para_styles(_document_xml(r.content))
+    assert "Solution-Title" not in styles  # worksheet drops solutions
+
+
+def test_endpoint_uploaded_template_overrides():
+    from quiz_to_word import _DEFAULT_TEMPLATE
+    tpl = _DEFAULT_TEMPLATE.read_bytes()
+    r = _client().post(
+        "/api/quiz/to-docx",
+        data={"text": QUIZ_MD, "filename": "custom"},
+        files={"template": ("mine.docx", tpl, "application/octet-stream")},
+    )
+    assert r.status_code == 200
+    assert r.content[:2] == b"PK"
+
+
+def test_endpoint_rejects_non_docx_template():
+    r = _client().post(
+        "/api/quiz/to-docx",
+        data={"text": QUIZ_MD},
+        files={"template": ("bad.docx", b"not a zip", "application/octet-stream")},
+    )
+    assert r.status_code == 400

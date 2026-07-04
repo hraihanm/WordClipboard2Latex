@@ -199,6 +199,7 @@ function ToWordSection() {
   const [includeSolutions, setIncludeSolutions] = useState(true);
   const [useTemplate, setUseTemplate] = useState(true);
   const [filename, setFilename] = useState('quiz');
+  const [templateFile, setTemplateFile] = useState<File | null>(null);
 
   const handleToClipboard = async () => {
     if (!text.trim()) return;
@@ -223,7 +224,7 @@ function ToWordSection() {
     setStatus(null);
     setError(null);
     try {
-      await quizToDocx(text, { includeSolutions, useTemplate, filename });
+      await quizToDocx(text, { includeSolutions, useTemplate, filename, templateFile });
       setStatus(`DOCX downloaded${includeSolutions ? '' : ' (worksheet — no solutions)'}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -240,7 +241,7 @@ function ToWordSection() {
         Word-styled HTML (P-Problem / P-Sub-problem / Solution classes) that you
         can paste directly into Word. <em>Download DOCX</em> uses Pandoc — math
         converts to native Word equations and paragraphs pick up the bundled
-        styled template.
+        styled template (or upload your own .docx template below).
       </p>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.35rem' }}>
@@ -276,14 +277,58 @@ function ToWordSection() {
           />
           Include solutions &amp; answer key
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+        <label
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.3rem',
+            cursor: templateFile ? 'not-allowed' : 'pointer', opacity: templateFile ? 0.5 : 1,
+          }}
+          title={templateFile ? 'Ignored while a custom template is uploaded' : undefined}
+        >
           <input
             type="checkbox"
             checked={useTemplate}
+            disabled={!!templateFile}
             onChange={(e) => setUseTemplate(e.target.checked)}
           />
           Styled template
         </label>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+          Template:
+          {templateFile ? (
+            <>
+              <span
+                style={{ maxWidth: '10rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                title={templateFile.name}
+              >
+                {templateFile.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => setTemplateFile(null)}
+                title="Remove uploaded template"
+                style={{
+                  border: 'none', background: 'transparent', cursor: 'pointer',
+                  color: 'var(--text-muted)', fontSize: '1rem', lineHeight: 1, padding: 0,
+                }}
+              >
+                ×
+              </button>
+            </>
+          ) : (
+            <label
+              className="btn-secondary"
+              style={{ fontSize: '0.75rem', padding: '2px 8px', cursor: 'pointer', margin: 0 }}
+            >
+              Upload .docx…
+              <input
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                style={{ display: 'none' }}
+                onChange={(e) => setTemplateFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          )}
+        </span>
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
           File name:
           <input

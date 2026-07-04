@@ -387,30 +387,50 @@ def _safe_docx_filename(name: str | None) -> str:
 
 
 @app.post("/api/quiz/to-docx")
-def quiz_to_docx(body: dict):
+def quiz_to_docx(
+    text: str = Form(""),
+    include_solutions: bool = Form(True),
+    use_template: bool = Form(True),
+    filename: str = Form("quiz"),
+    template: UploadFile | None = File(None),
+):
     """Convert quiz markdown to a .docx file via Pandoc and return it for download.
 
-    Body::
+    ``multipart/form-data`` fields:
 
-        {
-          "text": "...",                       # required — quiz markdown
-          "include_solutions": true,           # false → clean worksheet
-          "use_template": true,                # false → Pandoc default styling
-          "reference_doc": "/path.docx" | null,# explicit template override
-          "filename": "my-quiz"                # optional download name
-        }
+    - ``text``              — required, quiz markdown
+    - ``include_solutions`` — ``false`` → clean worksheet
+    - ``use_template``      — ``false`` → Pandoc default styling (ignored when a
+                              ``template`` file is uploaded)
+    - ``filename``          — optional download name
+    - ``template``          — optional uploaded .docx whose named paragraph styles
+                              override the bundled template
     """
     from quiz_to_word import quiz_md_to_docx_bytes
 
-    text = body.get("text", "").strip()
-    reference_doc = body.get("reference_doc") or None
-    include_solutions = bool(body.get("include_solutions", True))
-    use_template = bool(body.get("use_template", True))
-    filename = _safe_docx_filename(body.get("filename"))
+    text = (text or "").strip()
+    out_name = _safe_docx_filename(filename)
     if not text:
         return JSONResponse(status_code=400, content={"error": "No text provided"})
     if not shutil.which("pandoc"):
         return JSONResponse(status_code=500, content={"error": "Pandoc is not installed"})
+
+    # An uploaded template wins over the bundled default; persist it to a temp
+    # file so Pandoc's --reference-doc can read it.
+    reference_doc: str | None = None
+    tmp_template: str | None = None
+    if template is not None and (template.filename or "").strip():
+        data = template.file.read()
+        if data[:2] != b"PK":
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Uploaded template is not a valid .docx file."},
+            )
+        with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tf:
+            tf.write(data)
+            tmp_template = tf.name
+        reference_doc = tmp_template
+
     try:
         docx_bytes = quiz_md_to_docx_bytes(
             text,
@@ -422,11 +442,14 @@ def quiz_to_docx(body: dict):
         return JSONResponse(status_code=400, content={"error": str(e)})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+    finally:
+        if tmp_template:
+            Path(tmp_template).unlink(missing_ok=True)
 
     return Response(
         content=docx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{out_name}"'},
     )
 
 

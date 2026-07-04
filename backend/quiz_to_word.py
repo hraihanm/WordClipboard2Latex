@@ -38,7 +38,13 @@ from to_clipboard import (
 # raw_tex lets pandoc handle \textbf{}, \emph{}, \begin{enumerate}[(a)] etc. in text.
 # -smart keeps ASCII quotes/apostrophes verbatim so BANK_META JSON survives and
 # prose apostrophes (Newton's) don't become curly Unicode on the round trip.
-_MD_FMT = "markdown-smart+tex_math_dollars+tex_math_single_backslash+raw_tex"
+# -yaml_metadata_block stops Pandoc from treating a `---` thematic break in a
+# stem/solution (or between questions) as a YAML front-matter block, which would
+# otherwise abort the whole conversion with a YAML parse error.
+_MD_FMT = (
+    "markdown-smart-yaml_metadata_block"
+    "+tex_math_dollars+tex_math_single_backslash+raw_tex"
+)
 
 # Bundled Pandoc reference-doc that defines the named paragraph styles
 # ("P - Problem", "Solution - Title", …). Regenerate with
