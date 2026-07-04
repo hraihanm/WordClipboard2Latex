@@ -196,6 +196,9 @@ function ToWordSection() {
   const [error, setError]       = useState<string | null>(null);
   const [loadingCb, setLoadingCb] = useState(false);
   const [loadingDx, setLoadingDx] = useState(false);
+  const [includeSolutions, setIncludeSolutions] = useState(true);
+  const [useTemplate, setUseTemplate] = useState(true);
+  const [filename, setFilename] = useState('quiz');
 
   const handleToClipboard = async () => {
     if (!text.trim()) return;
@@ -220,8 +223,8 @@ function ToWordSection() {
     setStatus(null);
     setError(null);
     try {
-      await quizToDocx(text);
-      setStatus('DOCX downloaded.');
+      await quizToDocx(text, { includeSolutions, useTemplate, filename });
+      setStatus(`DOCX downloaded${includeSolutions ? '' : ' (worksheet — no solutions)'}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -236,7 +239,8 @@ function ToWordSection() {
         Paste astro-dev-id quiz markdown below. <em>Copy to Clipboard</em> writes
         Word-styled HTML (P-Problem / P-Sub-problem / Solution classes) that you
         can paste directly into Word. <em>Download DOCX</em> uses Pandoc — math
-        converts correctly; paragraph styles require a reference template.
+        converts to native Word equations and paragraphs pick up the bundled
+        styled template.
       </p>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.35rem' }}>
@@ -257,6 +261,46 @@ function ToWordSection() {
         style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.8rem', resize: 'vertical', marginBottom: '0.75rem' }}
       />
 
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+          marginBottom: '0.55rem', fontSize: '0.82rem', color: 'var(--text-muted)',
+        }}
+      >
+        <span style={{ fontWeight: 600 }}>DOCX options:</span>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={includeSolutions}
+            onChange={(e) => setIncludeSolutions(e.target.checked)}
+          />
+          Include solutions &amp; answer key
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={useTemplate}
+            onChange={(e) => setUseTemplate(e.target.checked)}
+          />
+          Styled template
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+          File name:
+          <input
+            type="text"
+            value={filename}
+            onChange={(e) => setFilename(e.target.value)}
+            placeholder="quiz"
+            style={{
+              width: '9rem', fontSize: '0.8rem', padding: '2px 6px',
+              border: '1px solid var(--border)', borderRadius: '4px',
+              background: 'var(--bg)', color: 'var(--text)',
+            }}
+          />
+          <span style={{ opacity: 0.7 }}>.docx</span>
+        </label>
+      </div>
+
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
         <button
           className="convert-btn"
@@ -270,7 +314,7 @@ function ToWordSection() {
           onClick={handleToDocx}
           disabled={loadingDx || !text.trim()}
         >
-          {loadingDx ? 'Generating…' : 'Download DOCX'}
+          {loadingDx ? 'Generating…' : includeSolutions ? 'Download DOCX' : 'Download Worksheet'}
         </button>
       </div>
 

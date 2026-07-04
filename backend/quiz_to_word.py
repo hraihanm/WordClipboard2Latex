@@ -40,6 +40,12 @@ from to_clipboard import (
 # prose apostrophes (Newton's) don't become curly Unicode on the round trip.
 _MD_FMT = "markdown-smart+tex_math_dollars+tex_math_single_backslash+raw_tex"
 
+# Bundled Pandoc reference-doc that defines the named paragraph styles
+# ("P - Problem", "Solution - Title", …). Regenerate with
+# scripts/build_quiz_template.py. Used by default so exports are styled without
+# the caller having to supply a template.
+_DEFAULT_TEMPLATE = Path(__file__).resolve().parent / "assets" / "quiz-template.docx"
+
 # Matches a single Pandoc-generated <p> wrapper (including attributes Pandoc may add)
 _P_OPEN_RE = re.compile(r"^<p(?:\s[^>]*)?>", re.IGNORECASE)
 
@@ -256,25 +262,37 @@ def quiz_md_to_clipboard(quiz_md: str) -> dict:
 _OPTION_LETTERS = "ABCDE"
 
 
-def _to_pandoc_custom_style_md(questions: list[QuizQuestion]) -> str:
+def _to_pandoc_custom_style_md(
+    questions: list[QuizQuestion],
+    include_solutions: bool = True,
+) -> str:
     """Render questions as Pandoc extended markdown with custom-style fenced divs.
 
     When Pandoc processes this with --reference-doc=template.docx the fenced-div
     style names map to these named paragraph styles in the template:
 
-      "P - Problem"     ← problem stem
-      "P - Sub-problem" ← each answer option
+      "P - Problem"     ← problem stem (prefixed with its 1-based number)
+      "P - Sub-problem" ← each answer option / essay sub-part
+      "Problem - Meta"  ← BANK_META block
       "Solution - Title"← Jawaban line
+      "Blank - Key"     ← FITB answer-key lines
       "Solution"        ← solution body paragraphs
 
     Without a reference doc Pandoc creates the styles from scratch (no special
     formatting, but math still converts to OMML correctly).
+
+    include_solutions:
+        When False, emit a clean worksheet: stems + options only, with the answer
+        title, FITB keys and worked solution omitted.
     """
     blocks: list[str] = []
 
-    for q in questions:
+    for i, q in enumerate(questions, 1):
+        num = q.number or i
         if q.stem:
-            blocks.append(f'::: {{custom-style="P - Problem"}}\n{q.stem}\n:::')
+            blocks.append(
+                f'::: {{custom-style="P - Problem"}}\n{num}\\. {q.stem}\n:::'
+            )
 
         for opt in q.options:
             blocks.append(f'::: {{custom-style="P - Sub-problem"}}\n{opt}\n:::')
@@ -283,6 +301,9 @@ def _to_pandoc_custom_style_md(questions: list[QuizQuestion]) -> str:
 
         if q.meta:
             blocks.append(f'::: {{custom-style="Problem - Meta"}}\n{q.meta}\n:::')
+
+        if not include_solutions:
+            continue
 
         blocks.append(
             f'::: {{custom-style="Solution - Title"}}\n'
@@ -303,7 +324,12 @@ def _to_pandoc_custom_style_md(questions: list[QuizQuestion]) -> str:
     return "\n\n".join(blocks)
 
 
-def quiz_md_to_docx_bytes(quiz_md: str, reference_doc: str | None = None) -> bytes:
+def quiz_md_to_docx_bytes(
+    quiz_md: str,
+    reference_doc: str | None = None,
+    include_solutions: bool = True,
+    use_template: bool = True,
+) -> bytes:
     """Convert quiz markdown to DOCX bytes.
 
     Parameters
@@ -312,9 +338,15 @@ def quiz_md_to_docx_bytes(quiz_md: str, reference_doc: str | None = None) -> byt
         Quiz markdown in astro-dev-id format.
     reference_doc:
         Path to a .docx template that defines the paragraph styles
-        "P - Problem", "P - Sub-problem", "Solution - Title", and "Solution".
-        If None, Pandoc creates those styles from scratch (math converts
-        correctly; paragraph formatting will be unstyled).
+        "P - Problem", "P - Sub-problem", "Solution - Title", "Blank - Key",
+        "Problem - Meta" and "Solution". If None and ``use_template`` is True,
+        the bundled ``assets/quiz-template.docx`` is used. Pass an explicit path
+        to override it.
+    include_solutions:
+        When False, export a clean worksheet (stems + options only).
+    use_template:
+        When False, skip the reference doc entirely (Pandoc default styling;
+        math still converts to OMML). Ignored when ``reference_doc`` is given.
 
     Returns
     -------
@@ -325,15 +357,20 @@ def quiz_md_to_docx_bytes(quiz_md: str, reference_doc: str | None = None) -> byt
     if not questions:
         raise ValueError("No questions found in the provided quiz markdown.")
 
-    pandoc_md = _to_pandoc_custom_style_md(questions)
+    pandoc_md = _to_pandoc_custom_style_md(questions, include_solutions=include_solutions)
+
+    # Resolve the reference doc: explicit path > bundled default (unless opted out).
+    ref: str | None = reference_doc
+    if ref is None and use_template and _DEFAULT_TEMPLATE.is_file():
+        ref = str(_DEFAULT_TEMPLATE)
 
     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
         tmp_path = Path(tmp.name)
 
     try:
         args = ["-o", str(tmp_path)]
-        if reference_doc:
-            args += ["--reference-doc", reference_doc]
+        if ref:
+            args += ["--reference-doc", ref]
 
         result = subprocess.run(
             ["pandoc", "-f", _MD_FMT, "-t", "docx", *args],

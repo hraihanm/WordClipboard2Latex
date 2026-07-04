@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-07-04
+
+### Feat: Styled quiz DOCX export (template + worksheet toggle + options)
+
+**Files:** `backend/quiz_to_word.py`, `backend/main.py`, `backend/scripts/build_quiz_template.py` (new),
+`backend/assets/quiz-template.docx` (new), `backend/tests/test_quiz_to_docx.py` (new),
+`frontend/src/api.ts`, `frontend/src/components/QuizPanel.tsx`
+
+The quiz → DOCX path was already wired end-to-end but shipped **no reference
+template**, so the custom-style fenced divs (`P - Problem`, `Solution - Title`, …)
+bound to nothing and exports came out unstyled.
+
+- **Bundled styled template** — `assets/quiz-template.docx` defines the named
+  paragraph styles (stem bold + spacing, indented options, green answer title,
+  blue FITB keys, muted meta/solution). `quiz_md_to_docx_bytes` uses it by default;
+  regenerate with `scripts/build_quiz_template.py` (python-docx, build-time only).
+- **Worksheet toggle** — `include_solutions=False` exports a clean questions-only
+  sheet (answer title, FITB keys and worked solution omitted).
+- **Numbered stems** — each problem is prefixed with its 1-based number.
+- **Fidelity** — LaTeX math converts to **native Word equations (OMML)**; confirmed
+  by tests inspecting `word/document.xml`.
+- **API + UI** — `/api/quiz/to-docx` accepts `include_solutions`, `use_template`
+  and a sanitised `filename`; the Quiz panel gains solutions / styled-template
+  checkboxes and a filename field.
+
 ## 2026-06-10
 
 ### Feat: Quiz Markdown → Word (clipboard + DOCX)

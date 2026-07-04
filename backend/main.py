@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -377,22 +378,46 @@ def quiz_to_clipboard(body: dict):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+def _safe_docx_filename(name: str | None) -> str:
+    """Sanitise a user-supplied download name into a safe ``*.docx`` filename."""
+    base = (name or "").strip() or "quiz"
+    base = re.sub(r"\.docx$", "", base, flags=re.IGNORECASE)
+    base = re.sub(r"[^A-Za-z0-9._ -]+", "", base).strip() or "quiz"
+    return f"{base[:80]}.docx"
+
+
 @app.post("/api/quiz/to-docx")
 def quiz_to_docx(body: dict):
     """Convert quiz markdown to a .docx file via Pandoc and return it for download.
 
-    Body: ``{"text": "...", "reference_doc": "/path/to/template.docx" | null}``
+    Body::
+
+        {
+          "text": "...",                       # required — quiz markdown
+          "include_solutions": true,           # false → clean worksheet
+          "use_template": true,                # false → Pandoc default styling
+          "reference_doc": "/path.docx" | null,# explicit template override
+          "filename": "my-quiz"                # optional download name
+        }
     """
     from quiz_to_word import quiz_md_to_docx_bytes
 
     text = body.get("text", "").strip()
     reference_doc = body.get("reference_doc") or None
+    include_solutions = bool(body.get("include_solutions", True))
+    use_template = bool(body.get("use_template", True))
+    filename = _safe_docx_filename(body.get("filename"))
     if not text:
         return JSONResponse(status_code=400, content={"error": "No text provided"})
     if not shutil.which("pandoc"):
         return JSONResponse(status_code=500, content={"error": "Pandoc is not installed"})
     try:
-        docx_bytes = quiz_md_to_docx_bytes(text, reference_doc)
+        docx_bytes = quiz_md_to_docx_bytes(
+            text,
+            reference_doc,
+            include_solutions=include_solutions,
+            use_template=use_template,
+        )
     except ValueError as e:
         return JSONResponse(status_code=400, content={"error": str(e)})
     except Exception as e:
@@ -401,7 +426,7 @@ def quiz_to_docx(body: dict):
     return Response(
         content=docx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": 'attachment; filename="quiz.docx"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

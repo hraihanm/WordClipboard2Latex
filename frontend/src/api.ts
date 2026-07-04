@@ -307,11 +307,30 @@ export async function quizToClipboard(text: string): Promise<QuizToWordResult> {
   return res.json();
 }
 
-export async function quizToDocx(text: string, referenceDoc?: string): Promise<void> {
+export interface QuizToDocxOptions {
+  includeSolutions?: boolean;
+  useTemplate?: boolean;
+  filename?: string;
+  referenceDoc?: string;
+}
+
+export async function quizToDocx(text: string, opts: QuizToDocxOptions = {}): Promise<void> {
+  const {
+    includeSolutions = true,
+    useTemplate = true,
+    filename = 'quiz',
+    referenceDoc,
+  } = opts;
   const res = await fetch('/api/quiz/to-docx', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, reference_doc: referenceDoc ?? null }),
+    body: JSON.stringify({
+      text,
+      include_solutions: includeSolutions,
+      use_template: useTemplate,
+      filename,
+      reference_doc: referenceDoc ?? null,
+    }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -321,7 +340,10 @@ export async function quizToDocx(text: string, referenceDoc?: string): Promise<v
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'quiz.docx';
+  // Prefer the server's Content-Disposition filename; fall back to the request.
+  const cd = res.headers.get('Content-Disposition') || '';
+  const m = cd.match(/filename="?([^"]+)"?/i);
+  a.download = m ? m[1] : `${filename || 'quiz'}.docx`;
   a.click();
   URL.revokeObjectURL(url);
 }
