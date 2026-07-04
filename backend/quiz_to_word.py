@@ -289,7 +289,7 @@ def _to_pandoc_custom_style_md(
 
     include_solutions:
         When False, emit a clean worksheet: stems + options only, with the answer
-        title, FITB keys and worked solution omitted.
+        title, FITB keys, worked solution *and* BANK_META omitted.
     """
     blocks: list[str] = []
 
@@ -305,11 +305,13 @@ def _to_pandoc_custom_style_md(
         for sub in q.subparts:
             blocks.append(f'::: {{custom-style="P - Sub-problem"}}\n{sub}\n:::')
 
+        if not include_solutions:
+            # Worksheet mode: stem + options only. BANK_META is internal
+            # classification, so it is omitted along with the answer key.
+            continue
+
         if q.meta:
             blocks.append(f'::: {{custom-style="Problem - Meta"}}\n{q.meta}\n:::')
-
-        if not include_solutions:
-            continue
 
         blocks.append(
             f'::: {{custom-style="Solution - Title"}}\n'

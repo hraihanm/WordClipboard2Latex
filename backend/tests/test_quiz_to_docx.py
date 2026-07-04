@@ -32,6 +32,11 @@ B
 ### Pembahasan
 Karena $\\int_0^1 x^2\\,dx = \\frac{1}{3}$.
 
+```meta
+difficulty: 2
+cognitive: Applying
+```
+
 ## Konstanta gravitasi Newton adalah {{1}}.
 
 ### Jawaban
@@ -62,6 +67,7 @@ def test_docx_is_styled_and_has_native_math():
     # LaTeX math becomes native Word equations (OMML), not literal "$…$".
     assert "<m:oMath" in doc
     assert "Jawaban" in doc  # answer key present by default
+    assert "Problem-Meta" in styles  # BANK_META shown in full mode
 
 
 def test_worksheet_omits_solutions():
@@ -72,6 +78,7 @@ def test_worksheet_omits_solutions():
     # No solution/answer-key content.
     assert "Solution-Title" not in styles
     assert "Blank-Key" not in styles
+    assert "Problem-Meta" not in styles  # internal metadata hidden on worksheets
     assert "Jawaban" not in doc
     # Math in the stem still converts.
     assert "<m:oMath" in doc
