@@ -34,35 +34,11 @@ from to_clipboard import (
     _preprocess_math_spacing,
 )
 
-# Pandoc input format: math delimiters + raw LaTeX pass-through
-# raw_tex lets pandoc handle \textbf{}, \emph{}, \begin{enumerate}[(a)] etc. in text
-_MD_FMT = "markdown+tex_math_dollars+tex_math_single_backslash+raw_tex"
-
-_DISPLAY_MATH_RE_WP = re.compile(r'\$\$([\s\S]*?)\$\$')
-_INLINE_MATH_RE_WP  = re.compile(r'\$([^$\n]+?)\$')
-
-
-def _preprocess_latex_text(text: str) -> str:
-    """Convert MathPix-style text-mode LaTeX to pandoc-compatible markdown.
-
-    Runs outside-math segments only:
-    - {,} → ,   (LaTeX decimal-comma notation used in e.g. 2{,}898)
-    """
-    parts = _DISPLAY_MATH_RE_WP.split(text)
-    # split gives: [text, math, text, math, ...] with 1 math group per separator
-    out: list[str] = []
-    for i, part in enumerate(parts):
-        if i % 2 == 1:
-            out.append(f'$${part}$$')
-            continue
-        # outside display math — also skip inline math
-        segments = _INLINE_MATH_RE_WP.split(part)
-        for j, seg in enumerate(segments):
-            if j % 2 == 1:
-                out.append(f'${seg}$')
-            else:
-                out.append(seg.replace('{,}', ','))
-    return ''.join(out)
+# Pandoc input format: math delimiters + raw LaTeX pass-through.
+# raw_tex lets pandoc handle \textbf{}, \emph{}, \begin{enumerate}[(a)] etc. in text.
+# -smart keeps ASCII quotes/apostrophes verbatim so BANK_META JSON survives and
+# prose apostrophes (Newton's) don't become curly Unicode on the round trip.
+_MD_FMT = "markdown-smart+tex_math_dollars+tex_math_single_backslash+raw_tex"
 
 # Matches a single Pandoc-generated <p> wrapper (including attributes Pandoc may add)
 _P_OPEN_RE = re.compile(r"^<p(?:\s[^>]*)?>", re.IGNORECASE)
@@ -88,6 +64,10 @@ p.Solution-Title,li.Solution-Title,div.Solution-Title
   {mso-style-name:"Solution - Title";font-weight:bold;mso-bidi-font-weight:normal;}
 p.Solution,li.Solution,div.Solution
   {mso-style-name:"Solution";}
+p.Blank-Key,li.Blank-Key,div.Blank-Key
+  {mso-style-name:"Blank - Key";}
+p.Problem-Meta,li.Problem-Meta,div.Problem-Meta
+  {mso-style-name:"Problem - Meta";color:gray;font-size:9.0pt;}
 -->
 </style>
 """
@@ -154,7 +134,7 @@ def _para_to_html(text: str, css_class: str) -> str:
     Pandoc's generic <p> wrapper with one that carries the correct Word
     paragraph-style class.
     """
-    text = _preprocess_latex_text(_preprocess_math_spacing(text, "markdown"))
+    text = _preprocess_math_spacing(text, "markdown")
     raw = _pandoc(text, _MD_FMT, "html", ["--mathml", "--wrap=none"]).strip()
     raw = _fix_math_spacing(raw)
     # Replace Pandoc's outer <p> with the class-annotated version
@@ -173,7 +153,7 @@ def _solution_body_to_html(solution_body: str) -> str:
     <p> and <li> with class="Solution" so Word applies the named style to
     both plain paragraphs and list items.
     """
-    body = _preprocess_latex_text(_preprocess_math_spacing(solution_body, "markdown"))
+    body = _preprocess_math_spacing(solution_body, "markdown")
     raw = _pandoc(body, _MD_FMT, "html", ["--mathml", "--wrap=none"])
     raw = _fix_math_spacing(raw)
     # Annotate every <p> and <li> tag
@@ -194,18 +174,40 @@ def questions_to_word_html(questions: list[QuizQuestion]) -> str:
         if q.stem:
             parts.append(_para_to_html(q.stem, "P-Problem"))
 
+        # Options (mc/cmc) and essay subparts are both authored as `### ` and
+        # share the P-Sub-problem style; only one list is ever populated.
         for opt in q.options:
             parts.append(_para_to_html(opt, "P-Sub-problem"))
+        for sub in q.subparts:
+            parts.append(_para_to_html(sub, "P-Sub-problem"))
 
-        if q.answer_label:
-            parts.append(
-                f'<p class="Solution-Title">Jawaban: {q.answer_label}</p>'
-            )
+        if q.meta:
+            parts.append(_para_to_html(q.meta, "Problem-Meta"))
+
+        parts.append(
+            f'<p class="Solution-Title">{_answer_title(q)}</p>'
+        )
+
+        # fill-in-the-blank answer keys get their own style so they survive the
+        # round trip (a P-Sub-problem here would be read back as an option).
+        for b in q.blanks:
+            parts.append(_para_to_html(b, "Blank-Key"))
 
         if q.solution_body:
             parts.append(_solution_body_to_html(q.solution_body))
 
     return "\n".join(parts)
+
+
+def _answer_title(q: "QuizQuestion") -> str:
+    """The text of the Solution-Title paragraph for a question."""
+    if q.qtype == "essay":
+        return "Solusi"
+    if q.qtype == "fitb":
+        return "Jawaban: Isian"
+    if q.qtype == "cmc":
+        return "Jawaban: " + ", ".join(q.answer_labels)
+    return f"Jawaban: {q.answer_label}"
 
 
 # ---------------------------------------------------------------------------
@@ -276,13 +278,20 @@ def _to_pandoc_custom_style_md(questions: list[QuizQuestion]) -> str:
 
         for opt in q.options:
             blocks.append(f'::: {{custom-style="P - Sub-problem"}}\n{opt}\n:::')
+        for sub in q.subparts:
+            blocks.append(f'::: {{custom-style="P - Sub-problem"}}\n{sub}\n:::')
 
-        if q.answer_label:
-            blocks.append(
-                f'::: {{custom-style="Solution - Title"}}\n'
-                f'**Jawaban: {q.answer_label}**\n'
-                f':::'
-            )
+        if q.meta:
+            blocks.append(f'::: {{custom-style="Problem - Meta"}}\n{q.meta}\n:::')
+
+        blocks.append(
+            f'::: {{custom-style="Solution - Title"}}\n'
+            f'**{_answer_title(q)}**\n'
+            f':::'
+        )
+
+        for b in q.blanks:
+            blocks.append(f'::: {{custom-style="Blank - Key"}}\n{b}\n:::')
 
         if q.solution_body:
             # Wrap each non-empty paragraph in a Solution div
@@ -316,7 +325,7 @@ def quiz_md_to_docx_bytes(quiz_md: str, reference_doc: str | None = None) -> byt
     if not questions:
         raise ValueError("No questions found in the provided quiz markdown.")
 
-    pandoc_md = _preprocess_latex_text(_to_pandoc_custom_style_md(questions))
+    pandoc_md = _to_pandoc_custom_style_md(questions)
 
     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
         tmp_path = Path(tmp.name)

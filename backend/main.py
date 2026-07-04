@@ -228,6 +228,7 @@ def convert_quiz(preset: str = "astro_dev_id"):
         parse_quiz_clipboard,
         render_astro_dev_id,
         render_generic,
+        render_unified_v3,
     )
 
     html = read_clipboard_html()
@@ -238,7 +239,12 @@ def convert_quiz(preset: str = "astro_dev_id"):
         )
 
     result = parse_quiz_clipboard(html)
-    quiz_md = render_astro_dev_id(result) if preset == "astro_dev_id" else render_generic(result)
+    if preset in ("v3", "unified"):
+        quiz_md = render_unified_v3(result)
+    elif preset == "generic":
+        quiz_md = render_generic(result)
+    else:
+        quiz_md = render_astro_dev_id(result)
 
     return {
         "quiz_markdown": quiz_md,
@@ -246,9 +252,14 @@ def convert_quiz(preset: str = "astro_dev_id"):
         "questions": [
             {
                 "number": q.number,
+                "type": q.qtype,
                 "stem": q.stem,
                 "options": q.options,
+                "subparts": q.subparts,
                 "answer_label": q.answer_label,
+                "answer_labels": q.answer_labels,
+                "blanks": q.blanks,
+                "meta": q.meta,
                 "solution_body": q.solution_body,
             }
             for q in result.questions
@@ -268,6 +279,7 @@ def convert_quiz_text(body: dict):
         parse_quiz_clipboard,
         render_astro_dev_id,
         render_generic,
+        render_unified_v3,
     )
 
     html = body.get("html", "")
@@ -276,7 +288,12 @@ def convert_quiz_text(body: dict):
         return JSONResponse(status_code=400, content={"error": "No HTML provided"})
 
     result = parse_quiz_clipboard(html)
-    quiz_md = render_astro_dev_id(result) if preset == "astro_dev_id" else render_generic(result)
+    if preset in ("v3", "unified"):
+        quiz_md = render_unified_v3(result)
+    elif preset == "generic":
+        quiz_md = render_generic(result)
+    else:
+        quiz_md = render_astro_dev_id(result)
 
     return {
         "quiz_markdown": quiz_md,
@@ -284,9 +301,14 @@ def convert_quiz_text(body: dict):
         "questions": [
             {
                 "number": q.number,
+                "type": q.qtype,
                 "stem": q.stem,
                 "options": q.options,
+                "subparts": q.subparts,
                 "answer_label": q.answer_label,
+                "answer_labels": q.answer_labels,
+                "blanks": q.blanks,
+                "meta": q.meta,
                 "solution_body": q.solution_body,
             }
             for q in result.questions
