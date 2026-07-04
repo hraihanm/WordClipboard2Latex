@@ -30,6 +30,9 @@ bound to nothing and exports came out unstyled.
 - **Fix** — disable Pandoc's `yaml_metadata_block` so a `---` thematic break inside
   a stem/solution (or between questions) is no longer misread as a YAML front-matter
   block, which previously aborted the whole conversion with a YAML parse error.
+- **Demo** — the Quiz panel "Load demo" content is now **v3** and exercises every
+  problem type (MC, complex-MC, FITB with numeric + text blanks, essay) plus a
+  ` ```meta ` block; the textarea placeholder shows v3 syntax.
 
 ## 2026-06-10
 

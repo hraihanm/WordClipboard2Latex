@@ -68,124 +68,67 @@ function QuizCard({ q }: { q: QuizQuestionData }) {
 
 // ── Demo source ──────────────────────────────────────────────────────────
 const DEMO_MD = `\
----
+## Sebuah bintang bersuhu $T = 2\\,T_\\odot$ dan berjari-jari $R = 3\\,R_\\odot$. Menurut hukum Stefan–Boltzmann $L = 4\\pi R^2 \\sigma T^4$, luminositasnya dalam satuan $L_\\odot$ adalah …
 
-## Sebuah bintang memiliki suhu permukaan $T = 6{,}000\\ \\mathrm{K}$ dan radius $R = 2{,}0\\ R_\\odot$. Luminositas bintang dinyatakan oleh hukum Stefan–Boltzmann:
+- (A) $L \\approx 48\\,L_\\odot$
+- (B) $L \\approx 9\\,L_\\odot$
+- (C) $L \\approx 144\\,L_\\odot$
+- (D) $L \\approx 24\\,L_\\odot$
 
-$$
-L = 4\\pi R^2 \\sigma T^4
-$$
+### Jawaban
+C
 
-Jika luminositas Matahari $L_\\odot$ diperoleh saat $R = R_\\odot$ dan $T = T_\\odot$, maka luminositas bintang ini dalam satuan $L_\\odot$ adalah\\ldots
-
-### $L \\approx 16\\ L_\\odot$
-### $L \\approx 4\\ L_\\odot$
-### $L \\approx 8\\ L_\\odot$
-### $L \\approx 64\\ L_\\odot$
-
-<solution_title> Jawaban: A
-
-Karena $T = T_\\odot$, kontribusi suhu hilang, dan:
+### Pembahasan
+Rasio luminositas hanya bergantung pada $R$ dan $T$:
 
 $$
-\\frac{L}{L_\\odot} = \\left(\\frac{R}{R_\\odot}\\right)^2 = (2{,}0)^2 = \\boxed{4\\ L_\\odot}
+\\frac{L}{L_\\odot} = \\left(\\frac{R}{R_\\odot}\\right)^2 \\left(\\frac{T}{T_\\odot}\\right)^4 = 3^2 \\cdot 2^4 = 9 \\cdot 16 = \\boxed{144}
 $$
 
-Jadi jawabannya **A**. \\textbf{Catatan:} kita menggunakan $T = T_\\odot$ agar faktor $T^4$ saling menghilangkan.
+\`\`\`meta
+type: mc
+difficulty: 2
+cognitive: Applying
+topics:
+  - Fisika Bintang/Luminositas
+\`\`\`
 
----
+## Manakah pernyataan berikut yang **benar** mengenai bintang deret utama? (pilih semua yang sesuai)
 
-## Perhatikan persamaan kesetimbangan hidrostatik berikut:
+- (A) Energi dihasilkan oleh fusi hidrogen menjadi helium di inti
+- (B) Bintang bermassa besar memiliki umur deret utama lebih pendek
+- (C) Tekanan meningkat ke arah luar untuk menopang gravitasi
+- (D) Semakin panas fotosfer, semakin biru warna bintang
 
-\\begin{align}
-\\frac{dP}{dr} &= -\\frac{G M(r) \\rho(r)}{r^2}
-\\end{align}
+### Jawaban
+A, B, D
 
-Dari persamaan ini, \\emph{arah perubahan tekanan} terhadap jari-jari $r$ di dalam bintang adalah\\ldots
+### Pembahasan
+A, B, dan D benar. C salah — kesetimbangan hidrostatik memberi $dP/dr < 0$, sehingga tekanan **berkurang** ke arah luar (bertambah ke arah pusat).
 
-### Tekanan \\textbf{berkurang} ke arah luar, $dP/dr < 0$
-### Tekanan bertambah ke arah luar, $dP/dr > 0$
-### Tekanan konstan di seluruh interior, $dP/dr = 0$
-### Tekanan bergantung pada komposisi kimia, bukan posisi
+## Hukum pergeseran Wien $\\lambda_\\max T = b$ dengan $b = 2{,}898 \\times 10^6\\ \\mathrm{nm\\cdot K}$. Untuk Matahari ($T_\\odot = 5{,}778\\ \\mathrm{K}$), panjang gelombang puncaknya adalah {{1}} nm, yang berada pada warna {{2}}.
 
-<solution_title> Jawaban: A
+### Jawaban
+1. [numerik:0.02] 501
+2. [teks] hijau-kuning
 
-Karena $G$, $M(r)$, $\\rho(r)$, dan $r^2$ semuanya positif, tanda minus memastikan:
-
-$$\\frac{dP}{dr} < 0$$
-
-Tekanan \\textbf{berkurang} ke arah luar (atau \\emph{bertambah} ke arah pusat) — inilah yang menopang bintang melawan gravitasi.
-
----
-
-## Tabel berikut menunjukkan sifat empat kelas bintang deret utama. Bintang manakah yang memiliki luminositas terbesar?
-
-\\begin{tabular}{lccc}
-\\hline
-Kelas & $T_\\mathrm{eff}$ (K) & $R/R_\\odot$ & $L/L_\\odot$ \\\\
-\\hline
-O5 & $42{,}000$ & $12$ & $8 \\times 10^5$ \\\\
-B0 & $30{,}000$ & $7$ & $5 \\times 10^4$ \\\\
-A0 & $10{,}000$ & $2{,}4$ & $54$ \\\\
-G2 (Matahari) & $5{,}778$ & $1{,}0$ & $1{,}0$ \\\\
-\\hline
-\\end{tabular}
-
-### Bintang kelas O5
-### Bintang kelas B0
-### Bintang kelas A0
-### Bintang kelas G2
-
-<solution_title> Jawaban: A
-
-Dari tabel, bintang kelas \\textbf{O5} memiliki $L/L_\\odot = 8 \\times 10^5$ — jauh melampaui kelas lainnya.
-
-Ini konsisten dengan $L \\propto R^2 T^4$: bintang O5 \\emph{lebih besar dan lebih panas} secara bersamaan, sehingga luminositasnya meledak secara eksponensial.
-
----
-
-## Hukum pergeseran Wien menyatakan $\\lambda_\\max T = b$ dengan $b = 2{,}898 \\times 10^6\\ \\mathrm{nm \\cdot K}$. Berapakah $\\lambda_\\max$ untuk Matahari ($T_\\odot = 5{,}778\\ \\mathrm{K}$)?
-
-### $\\lambda_\\max \\approx 501\\ \\mathrm{nm}$ (hijau–kuning)
-### $\\lambda_\\max \\approx 483\\ \\mathrm{nm}$ (biru–hijau)
-### $\\lambda_\\max \\approx 620\\ \\mathrm{nm}$ (merah–oranye)
-### $\\lambda_\\max \\approx 380\\ \\mathrm{nm}$ (ultraviolet)
-
-<solution_title> Jawaban: A
-
+### Pembahasan
 $$
-\\lambda_\\max = \\frac{2{,}898 \\times 10^6\\ \\mathrm{nm \\cdot K}}{5{,}778\\ \\mathrm{K}} \\approx \\boxed{501\\ \\mathrm{nm}}
+\\lambda_\\max = \\frac{2{,}898 \\times 10^6}{5{,}778} \\approx 501\\ \\mathrm{nm}
 $$
 
-Panjang gelombang ini berada di spektrum \\emph{hijau–kuning} — bukan kebetulan bahwa mata manusia paling sensitif tepat di kisaran ini.
+Panjang gelombang ini jatuh di rentang hijau–kuning — tepat di tempat mata manusia paling sensitif.
 
----
+## Jelaskan mengapa bintang bermassa besar memiliki umur deret utama yang jauh lebih pendek daripada bintang bermassa kecil, meskipun memiliki cadangan hidrogen yang lebih banyak.
 
-## Terdapat empat proses di dalam bintang deret utama:
+### Pembahasan
+Umur deret utama sebanding dengan bahan bakar dibagi laju pembakaran, $t_\\mathrm{MS} \\propto M/L$. Pada deret utama berlaku hubungan massa–luminositas $L \\propto M^{3{,}5}$, sehingga:
 
-\\begin{enumerate}[(a)]
-  \\item Fusi hidrogen menjadi helium di inti ($T \\sim 10^7\\ \\mathrm{K}$)
-  \\item Transfer energi dari inti ke selubung via konveksi atau radiasi
-  \\item Pancaran foton dari fotosfer ke ruang angkasa
-  \\item Reaksi fisi nuklir di selubung luar
-\\end{enumerate}
+$$
+t_\\mathrm{MS} \\propto \\frac{M}{M^{3{,}5}} = M^{-2{,}5}
+$$
 
-Proses manakah yang \\textbf{tidak} terjadi pada bintang deret utama?
-
-### (a) saja
-### (b) dan (c)
-### (d) saja
-### (a), (b), dan (c)
-
-<solution_title> Jawaban: C
-
-Proses (a)–(c) adalah mekanisme inti bintang deret utama:
-
-- \\textbf{Fusi hidrogen} menghasilkan energi di inti
-- \\textbf{Konveksi/radiasi} mentransfer energi ke permukaan
-- \\textbf{Emisi foton} melepas energi ke ruang angkasa
-
-\\emph{Reaksi fisi} (d) \\textbf{tidak} terjadi di bintang deret utama — fisi adalah pemecahan inti berat (reaktor nuklir / senjata), bukan sumber energi bintang.
+Artinya bintang masif membakar bahan bakarnya jauh lebih boros: luminositasnya melonjak dengan pangkat tinggi terhadap massa. Meski cadangan hidrogennya lebih besar, laju konsumsi yang jauh lebih tinggi itu mengalahkan tambahan bahan bakar — sehingga umurnya justru jauh lebih singkat.
 `;
 
 // ── Markdown → Word: to-word panel ──────────────────────────────────────
@@ -257,7 +200,7 @@ function ToWordSection() {
         className="code-output"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder={'---\n\n## Problem stem with $math$\n\n### Option A\n### Option B\n\n<solution_title> Jawaban: A\n\nSolution body...\n\n---'}
+        placeholder={'## Problem stem with $math$\n\n- (A) Option A\n- (B) Option B\n\n### Jawaban\nA\n\n### Pembahasan\nSolution body...'}
         rows={14}
         style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.8rem', resize: 'vertical', marginBottom: '0.75rem' }}
       />
