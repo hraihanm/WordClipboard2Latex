@@ -1,5 +1,87 @@
 # Changelog
 
+## 2026-07-06
+
+### Feat: Auto-numbering, hidden metadata, LaTeX lists, richer demo
+
+**Files:** `backend/scripts/build_quiz_template.py`, `backend/assets/quiz-template.docx`
+(regenerated), `backend/quiz_to_word.py`, `backend/quiz_parser.py`, `backend/main.py`,
+`backend/tests/test_quiz_to_docx.py`, `frontend/src/api.ts`,
+`frontend/src/components/QuizPanel.tsx`
+
+Follow-up to the styled template, fixing real issues seen in exported docs.
+
+- **No more baked-in numbers.** The exporter stopped prefixing stems with
+  `1.` / `2.`. Instead the bundled template carries a **style-linked multilevel
+  list** (`numbering.xml`): `P - Problem` → `1.`, `P - Sub-problem` → `a.`,
+  `P - Sub-sub Problem` → `i.`, produced by Word and reset per problem. Confirmed
+  Pandoc preserves the reference doc's numbering and applies it via the style.
+  This also removes the **double-numbering** when pasting into a template that
+  already numbers.
+- **Metadata is hidden and opt-in.** `BANK_META` is omitted by default. With the
+  new **"Metadata (hidden)"** toggle (API `include_meta`), it's emitted *after*
+  the solution in the new hidden `P - Meta` style (`w:vanish`) — invisible in
+  print, preserved for round-tripping.
+- **LaTeX lists now convert.** `\begin{itemize}` / `\begin{enumerate}` … `\item`
+  were silently dropped by Pandoc's DOCX writer; a preprocessor rewrites them to
+  markdown lists first, so they render as real Word bullets/numbers.
+- **Style rename for a consistent taxonomy** (matches the house `P - …` /
+  `Solution - …` prefixes): `Blank - Key` → `Solution - Key`,
+  `Problem - Meta` → `P - Meta`. New styles added: `P - Passage` (reading
+  context), `Solution - Step`. Round-trip parser and clipboard CSS updated.
+- **Richer demo** — six problems exercising `bmatrix`/`pmatrix`, `det`, `\lim`,
+  `\int`, `\sum`, `aligned`, `cases`, a pipe table, blockquote, tight lists,
+  inline code, a `---` rule in a solution, LaTeX `itemize`/`enumerate`, a
+  reading-passage essay, and rich `meta` (topics + source).
+- Tests: 27 → 32 (numbering, hidden-meta opt-in, LaTeX-list conversion,
+  `Solution - Key`, `include_meta` endpoint flag).
+
+> Note: restart the backend after pulling — the FastAPI process caches the
+> parser/exporter modules, so a stale server can still emit the old format.
+
+## 2026-07-05
+
+### Feat: Default DOCX template matches the house "Paket Soal" format
+
+**Files:** `backend/scripts/build_quiz_template.py`, `backend/assets/quiz-template.docx` (regenerated)
+
+Rebuilt the bundled reference template to reproduce the canonical answer-key
+styling (from an actual `Paket Soal Astronomi` export) instead of generic
+Calibri defaults:
+
+- **Blue-themed outline** — `P - Subject` / `P - Problem` / `P - Sub-problem`
+  render in accent blue `#2F5496`; `Solution - Title` is bold blue; `Solution`
+  and FITB `Blank - Key` use the darker `#1F3864`.
+- **New styles** — added `P - Subject` (12pt bold section header) and
+  `P - Sub-sub Problem` (roman-nested sub-part), which the reference format uses
+  but the template was missing.
+- **Hanging indents** — Subject/Problem `.25in`, Sub-problem `.5in`,
+  Sub-sub `.75in`, each with a `.25in` hanging indent to seat the baked-in
+  `1.` / `a.` marker; solution/title/keys indent `.25in`.
+- **Font** — body set to `LM Roman 10` (matches the reference; swap in one
+  constant); math left on Cambria Math, the reference doc's math font.
+- Styles remain the structural identifier (styleId = spaces-stripped name, e.g.
+  `P - Problem` → `P-Problem`), so the Word↔md round-trip and Pandoc custom-style
+  binding are unaffected. Numbering stays baked into text (Pandoc can't emit
+  Word `numPr`).
+
+### Feat: "Load demo" now stress-tests the converter
+
+**Files:** `frontend/src/components/QuizPanel.tsx`
+
+Replaced the modest demo with a 4-question v3 set (astronomy) that pushes the
+DOCX path to its edges — all verified to convert in both full and worksheet mode:
+
+- **All four types** — MC, complex-MC (4 correct answers), FITB (3 blanks:
+  numeric + text) and essay.
+- **Advanced math → OMML** — `aligned`, `cases`, `pmatrix` display blocks plus
+  dense inline math (57 native equations in full mode).
+- **Rich markdown** — a pipe table, blockquote, tight bullet list, inline code,
+  and a `---` thematic break inside a solution (the YAML-block regression case).
+- **Full metadata** — ```` ```meta ```` fences with `topics` (multi + subtopic),
+  a `source` dict, `quality` and `qualityIssues`.
+- Worksheet mode correctly strips the solution table, keys and meta.
+
 ## 2026-07-04
 
 ### Feat: Styled quiz DOCX export (template + worksheet toggle + options)

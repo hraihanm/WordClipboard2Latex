@@ -310,6 +310,8 @@ export async function quizToClipboard(text: string): Promise<QuizToWordResult> {
 export interface QuizToDocxOptions {
   includeSolutions?: boolean;
   useTemplate?: boolean;
+  /** Append the hidden BANK_META line after each solution. Off by default. */
+  includeMeta?: boolean;
   filename?: string;
   /** Optional uploaded .docx whose named styles override the bundled template. */
   templateFile?: File | null;
@@ -319,6 +321,7 @@ export async function quizToDocx(text: string, opts: QuizToDocxOptions = {}): Pr
   const {
     includeSolutions = true,
     useTemplate = true,
+    includeMeta = false,
     filename = 'quiz',
     templateFile = null,
   } = opts;
@@ -326,6 +329,7 @@ export async function quizToDocx(text: string, opts: QuizToDocxOptions = {}): Pr
   fd.append('text', text);
   fd.append('include_solutions', String(includeSolutions));
   fd.append('use_template', String(useTemplate));
+  fd.append('include_meta', String(includeMeta));
   fd.append('filename', filename);
   if (templateFile) fd.append('template', templateFile, templateFile.name);
   const res = await fetch('/api/quiz/to-docx', {

@@ -70,7 +70,7 @@ class QuizParseResult:
 
 _QUIZ_CLASSES = frozenset({
     "P-Problem", "P-Sub-problem", "Solution-Title", "Solution",
-    "Blank-Key", "Problem-Meta",
+    "Solution-Key", "P-Meta",
 })
 
 
@@ -265,7 +265,7 @@ def parse_quiz_clipboard(html: str) -> QuizParseResult:
             if text:
                 current.options.append(text)
 
-        elif cls == "Blank-Key":
+        elif cls == "Solution-Key":
             if current is None:
                 continue
             text = _extract_inline_md(p, inline_blocks, result.warnings).strip()
@@ -273,7 +273,7 @@ def parse_quiz_clipboard(html: str) -> QuizParseResult:
                 current.qtype = "fitb"
                 current.blanks.append(text)
 
-        elif cls == "Problem-Meta":
+        elif cls == "P-Meta":
             if current is None:
                 continue
             text = _extract_inline_md(p, inline_blocks, result.warnings).strip()
@@ -285,7 +285,7 @@ def parse_quiz_clipboard(html: str) -> QuizParseResult:
                 continue
             raw = p.get_text(strip=True)
             qtype, labels = _classify_answer_line(raw)
-            # Blank-Key paragraphs may have already fixed qtype to "fitb".
+            # Solution-Key paragraphs may have already fixed qtype to "fitb".
             if current.qtype != "fitb":
                 current.qtype = qtype
             current.answer_labels = labels
@@ -327,7 +327,7 @@ def _extract_meta(block: str) -> str:
 
     Mirrors bank-meta.ts: JSON form is preferred, key/value form is the
     fallback.  The returned string is the *inner* payload (no ``<!-- -->``),
-    ready to render into a Problem-Meta paragraph and re-wrap on the way back.
+    ready to render into a P-Meta paragraph and re-wrap on the way back.
     """
     m = _META_JSON_RE.search(block)
     if m:

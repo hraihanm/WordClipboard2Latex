@@ -68,67 +68,192 @@ function QuizCard({ q }: { q: QuizQuestionData }) {
 
 // ── Demo source ──────────────────────────────────────────────────────────
 const DEMO_MD = `\
-## Sebuah bintang bersuhu $T = 2\\,T_\\odot$ dan berjari-jari $R = 3\\,R_\\odot$. Menurut hukum Stefan–Boltzmann $L = 4\\pi R^2 \\sigma T^4$, luminositasnya dalam satuan $L_\\odot$ adalah …
+## Sebuah planet mengorbit bintang bermassa $M_\\star = 1{,}2\\,M_\\odot$ dengan periode $P = 3{,}0$ tahun. Dengan hukum Kepler ketiga $P^2 = \\dfrac{4\\pi^2 a^3}{G M_\\star}$, setengah sumbu panjang orbitnya (dalam AU) paling mendekati …
 
-- (A) $L \\approx 48\\,L_\\odot$
-- (B) $L \\approx 9\\,L_\\odot$
-- (C) $L \\approx 144\\,L_\\odot$
-- (D) $L \\approx 24\\,L_\\odot$
+- (A) $a \\approx 2{,}3\\ \\mathrm{AU}$
+- (B) $a \\approx 2{,}0\\ \\mathrm{AU}$
+- (C) $a \\approx 3{,}0\\ \\mathrm{AU}$
+- (D) $a \\approx 1{,}6\\ \\mathrm{AU}$
+- (E) $a \\approx 4{,}1\\ \\mathrm{AU}$
 
 ### Jawaban
-C
+A
 
 ### Pembahasan
-Rasio luminositas hanya bergantung pada $R$ dan $T$:
+Dalam satuan surya berlaku $P^2 = a^3 / M_\\star$ ($P$ dalam tahun, $a$ dalam AU, $M_\\star$ dalam $M_\\odot$), sehingga:
 
 $$
-\\frac{L}{L_\\odot} = \\left(\\frac{R}{R_\\odot}\\right)^2 \\left(\\frac{T}{T_\\odot}\\right)^4 = 3^2 \\cdot 2^4 = 9 \\cdot 16 = \\boxed{144}
+\\begin{aligned}
+a &= \\left( M_\\star\\,P^2 \\right)^{1/3} \\\\
+  &= \\left( 1{,}2 \\times 3{,}0^2 \\right)^{1/3} \\\\
+  &= \\left( 10{,}8 \\right)^{1/3} \\approx 2{,}21\\ \\mathrm{AU}
+\\end{aligned}
 $$
+
+Nilai ini paling dekat dengan **2,3 AU**.
 
 \`\`\`meta
 type: mc
-difficulty: 2
+difficulty: 3
 cognitive: Applying
+quality: good
 topics:
-  - Fisika Bintang/Luminositas
+  - Mekanika Benda Langit/Hukum Kepler
+  - Sistem Keplerian
+source:
+  kind: competition
+  series: OSN
+  stage: Provinsi
+  year: 2023
 \`\`\`
 
-## Manakah pernyataan berikut yang **benar** mengenai bintang deret utama? (pilih semua yang sesuai)
+## Perhatikan klasifikasi spektral bintang. Manakah pernyataan yang **benar**? *(pilih semua yang sesuai)*
 
-- (A) Energi dihasilkan oleh fusi hidrogen menjadi helium di inti
-- (B) Bintang bermassa besar memiliki umur deret utama lebih pendek
-- (C) Tekanan meningkat ke arah luar untuk menopang gravitasi
-- (D) Semakin panas fotosfer, semakin biru warna bintang
-
-### Jawaban
-A, B, D
-
-### Pembahasan
-A, B, dan D benar. C salah — kesetimbangan hidrostatik memberi $dP/dr < 0$, sehingga tekanan **berkurang** ke arah luar (bertambah ke arah pusat).
-
-## Hukum pergeseran Wien $\\lambda_\\max T = b$ dengan $b = 2{,}898 \\times 10^6\\ \\mathrm{nm\\cdot K}$. Untuk Matahari ($T_\\odot = 5{,}778\\ \\mathrm{K}$), panjang gelombang puncaknya adalah {{1}} nm, yang berada pada warna {{2}}.
+- (A) Bintang kelas O lebih panas daripada kelas B
+- (B) Garis serapan hidrogen Balmer paling kuat pada kelas A
+- (C) Bintang kelas M menampilkan pita molekul TiO
+- (D) Urutan Harvard dari panas ke dingin adalah O–B–A–F–G–K–M
+- (E) Matahari berkelas spektral B
 
 ### Jawaban
-1. [numerik:0.02] 501
-2. [teks] hijau-kuning
+A, B, C, D
 
 ### Pembahasan
-$$
-\\lambda_\\max = \\frac{2{,}898 \\times 10^6}{5{,}778} \\approx 501\\ \\mathrm{nm}
-$$
+Ringkasan kelas spektral utama:
 
-Panjang gelombang ini jatuh di rentang hijau–kuning — tepat di tempat mata manusia paling sensitif.
+| Kelas | $T_\\mathrm{eff}$ (K) | Ciri khas |
+|---|---|---|
+| O | $> 30\\,000$ | garis He II |
+| A | $\\sim 9\\,000$ | Balmer terkuat |
+| G | $\\sim 5\\,800$ | logam netral (Matahari) |
+| M | $< 3\\,900$ | pita molekul TiO |
 
-## Jelaskan mengapa bintang bermassa besar memiliki umur deret utama yang jauh lebih pendek daripada bintang bermassa kecil, meskipun memiliki cadangan hidrogen yang lebih banyak.
+Pernyataan **E salah**: Matahari berkelas \`G2V\`, bukan B. Sisanya benar.
+
+---
+
+Mnemonik klasik untuk mengingat urutan Harvard: *"Oh Be A Fine Girl/Guy, Kiss Me."*
+
+## Kecepatan lepas dari permukaan Bumi ($M_\\oplus$, $R_\\oplus$) adalah $v_e = \\sqrt{2GM_\\oplus/R_\\oplus}$. Maka $v_e \\approx$ {{1}} km/s. Bila massa planet dilipatduakan pada jari-jari tetap, $v_e$ menjadi {{2}} kali semula. Proses lepas landas ini pada dasarnya melawan gaya {{3}}.
+
+### Jawaban
+1. [numerik:0.1] 11.2
+2. [numerik:0.01] 1.41
+3. [teks] gravitasi
 
 ### Pembahasan
-Umur deret utama sebanding dengan bahan bakar dibagi laju pembakaran, $t_\\mathrm{MS} \\propto M/L$. Pada deret utama berlaku hubungan massa–luminositas $L \\propto M^{3{,}5}$, sehingga:
+Substitusi konstanta memberi:
 
 $$
-t_\\mathrm{MS} \\propto \\frac{M}{M^{3{,}5}} = M^{-2{,}5}
+v_e = \\sqrt{\\frac{2GM_\\oplus}{R_\\oplus}} \\approx 1{,}12 \\times 10^4\\ \\mathrm{m/s} = 11{,}2\\ \\mathrm{km/s}
 $$
 
-Artinya bintang masif membakar bahan bakarnya jauh lebih boros: luminositasnya melonjak dengan pangkat tinggi terhadap massa. Meski cadangan hidrogennya lebih besar, laju konsumsi yang jauh lebih tinggi itu mengalahkan tambahan bahan bakar — sehingga umurnya justru jauh lebih singkat.
+Ketergantungan $v_e$ pada massa (jari-jari tetap):
+
+$$
+v_e \\propto \\sqrt{M}, \\qquad
+\\begin{cases}
+M \\to 2M &\\Rightarrow v_e \\to \\sqrt{2}\\,v_e \\approx 1{,}41\\,v_e \\\\
+M \\to 4M &\\Rightarrow v_e \\to 2\\,v_e
+\\end{cases}
+$$
+
+Poin penting:
+
+- $v_e$ naik dengan faktor $\\sqrt{2}$ saat massa berlipat dua
+- besaran ini tak bergantung pada massa roket
+- yang harus dilawan sepenuhnya adalah tarikan **gravitasi** planet
+
+## Diberikan matriks rotasi $R(\\theta) = \\begin{bmatrix} \\cos\\theta & -\\sin\\theta \\\\ \\sin\\theta & \\cos\\theta \\end{bmatrix}$. Nilai $\\det R(\\theta)$ dan $\\displaystyle \\lim_{\\theta \\to 0} \\frac{\\sin\\theta}{\\theta}$ berturut-turut adalah …
+
+- (A) $1$ dan $1$
+- (B) $\\cos 2\\theta$ dan $0$
+- (C) $1$ dan $0$
+- (D) $0$ dan $1$
+
+### Jawaban
+A
+
+### Pembahasan
+Determinannya memakai identitas Pythagoras:
+
+$$
+\\det R(\\theta) = \\cos^2\\theta - (-\\sin\\theta)(\\sin\\theta) = \\cos^2\\theta + \\sin^2\\theta = 1
+$$
+
+Limit fundamental (dari deret $\\sin\\theta = \\theta - \\tfrac{\\theta^3}{6} + \\cdots$):
+
+$$
+\\lim_{\\theta \\to 0} \\frac{\\sin\\theta}{\\theta} = 1
+$$
+
+Rotasi mempertahankan luas ($\\det = 1$) — sejalan dengan invariansi integral Gauss
+$\\displaystyle \\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}$ terhadap rotasi sumbu, dan
+dengan jumlahan energi mode $\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}$ yang tak bergantung basis.
+
+## **Bacaan.** Sebuah satelit pada orbit rendah (LEO) mengalami hambatan atmosfer lemah, sehingga energi mekaniknya $E = -\\dfrac{GMm}{2a}$ berkurang perlahan. Berdasarkan bacaan itu, jawablah:
+
+\\begin{enumerate}
+\\item Jelaskan mengapa laju satelit justru **bertambah** saat orbitnya meluruh (paradoks satelit).
+\\item Sebutkan besaran orbit yang berubah beserta arah perubahannya.
+\\end{enumerate}
+
+### Pembahasan
+Karena $E = -\\dfrac{GMm}{2a}$, hilangnya energi (E makin negatif) memaksa $a$ mengecil. Laju orbit lingkaran $v = \\sqrt{GM/a}$ justru **naik** ketika $a$ turun — di situlah paradoksnya: gesekan memperlambat sesaat, tetapi konversi energi potensial ke kinetik lebih dominan.
+
+Besaran yang berubah saat $a$ menyusut:
+
+\\begin{itemize}
+\\item setengah sumbu $a$: \\textbf{berkurang}
+\\item laju orbit $v \\propto a^{-1/2}$: \\textbf{bertambah}
+\\item periode $T \\propto a^{3/2}$: \\textbf{berkurang}
+\\end{itemize}
+
+> Intuisi: satelit "jatuh ke dalam sumur potensial", menukar ketinggian dengan kelajuan.
+
+\`\`\`meta
+type: essay
+difficulty: 4
+cognitive: Understanding
+quality: good
+topics:
+  - Mekanika Benda Langit/Orbit
+\`\`\`
+
+## Turunkan hubungan antara magnitudo semu $m$, magnitudo mutlak $M$, dan jarak $d$ (dalam parsec), lalu jelaskan makna fisis modulus jarak $\\mu = m - M$. Sertakan bentuk matriks yang memetakan $(\\log_{10} d,\\,1)$ ke $\\mu$.
+
+### Pembahasan
+Fluks mengikuti hukum kuadrat terbalik, $F \\propto d^{-2}$. Dari definisi magnitudo:
+
+$$
+\\begin{aligned}
+m - M &= -2{,}5 \\log_{10}\\!\\left(\\frac{F_d}{F_{10}}\\right) \\\\
+      &= -2{,}5 \\log_{10}\\!\\left(\\frac{d}{10\\ \\mathrm{pc}}\\right)^{-2} \\\\
+      &= 5 \\log_{10} d - 5
+\\end{aligned}
+$$
+
+Sebagai transformasi afin terhadap $\\log_{10} d$, hubungan itu setara dengan perkalian matriks:
+
+$$
+\\mu =
+\\begin{pmatrix} 5 & -5 \\end{pmatrix}
+\\begin{pmatrix} \\log_{10} d \\\\ 1 \\end{pmatrix}
+$$
+
+> Modulus jarak $\\mu = m - M$ adalah "jarak dalam bahasa magnitudo": setiap kenaikan $\\mu$ sebesar $5$ berarti jarak menjadi $10\\times$ lebih jauh.
+
+Karena $\\mu$ hanya bergantung pada $d$, mengukur $m$ dan mengetahui $M$ (mis. dari lilin standar seperti Cepheid) langsung memberi jarak.
+
+\`\`\`meta
+type: essay
+difficulty: 4
+cognitive: Analyzing
+quality: needs_review
+qualityIssues: [needs_diagram]
+topics:
+  - Fotometri/Magnitudo
+\`\`\`
 `;
 
 // ── Markdown → Word: to-word panel ──────────────────────────────────────
@@ -141,6 +266,7 @@ function ToWordSection() {
   const [loadingDx, setLoadingDx] = useState(false);
   const [includeSolutions, setIncludeSolutions] = useState(true);
   const [useTemplate, setUseTemplate] = useState(true);
+  const [includeMeta, setIncludeMeta] = useState(false);
   const [filename, setFilename] = useState('quiz');
   const [templateFile, setTemplateFile] = useState<File | null>(null);
 
@@ -167,7 +293,7 @@ function ToWordSection() {
     setStatus(null);
     setError(null);
     try {
-      await quizToDocx(text, { includeSolutions, useTemplate, filename, templateFile });
+      await quizToDocx(text, { includeSolutions, useTemplate, includeMeta, filename, templateFile });
       setStatus(`DOCX downloaded${includeSolutions ? '' : ' (worksheet — no solutions)'}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -234,6 +360,21 @@ function ToWordSection() {
             onChange={(e) => setUseTemplate(e.target.checked)}
           />
           Styled template
+        </label>
+        <label
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.3rem',
+            cursor: includeSolutions ? 'pointer' : 'not-allowed', opacity: includeSolutions ? 1 : 0.5,
+          }}
+          title="Embed BANK_META as hidden text after each solution"
+        >
+          <input
+            type="checkbox"
+            checked={includeMeta}
+            disabled={!includeSolutions}
+            onChange={(e) => setIncludeMeta(e.target.checked)}
+          />
+          Metadata (hidden)
         </label>
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
           Template:

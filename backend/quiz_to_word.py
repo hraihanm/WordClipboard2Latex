@@ -76,10 +76,10 @@ p.Solution-Title,li.Solution-Title,div.Solution-Title
   {mso-style-name:"Solution - Title";font-weight:bold;mso-bidi-font-weight:normal;}
 p.Solution,li.Solution,div.Solution
   {mso-style-name:"Solution";}
-p.Blank-Key,li.Blank-Key,div.Blank-Key
-  {mso-style-name:"Blank - Key";}
-p.Problem-Meta,li.Problem-Meta,div.Problem-Meta
-  {mso-style-name:"Problem - Meta";color:gray;font-size:9.0pt;}
+p.Solution-Key,li.Solution-Key,div.Solution-Key
+  {mso-style-name:"Solution - Key";}
+p.P-Meta,li.P-Meta,div.P-Meta
+  {mso-style-name:"P - Meta";color:gray;font-size:9.0pt;mso-style-hidden:yes;}
 -->
 </style>
 """
@@ -127,6 +127,46 @@ def _make_quiz_cf_html(fragment: str) -> bytes:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+# Matches an innermost itemize/enumerate environment (no nested begin inside).
+_LATEX_LIST_RE = re.compile(
+    r"\\begin\{(itemize|enumerate)\}(.*?)\\end\{\1\}",
+    re.DOTALL,
+)
+
+
+def _latex_lists_to_md(text: str) -> str:
+    """Rewrite LaTeX ``itemize`` / ``enumerate`` environments to markdown lists.
+
+    Pandoc drops raw-tex list environments when producing DOCX, so LaTeX-authored
+    lists would silently vanish.  Convert them to markdown ``-`` / ``1.`` lists
+    (which Pandoc renders as real Word lists) *before* handing text to Pandoc.
+    Works inside-out so nested lists convert too; the whole list is fenced by
+    blank lines so the surrounding paragraph splitter keeps it intact.
+    """
+    def _one(m: re.Match) -> str:
+        kind, inner = m.group(1), m.group(2)
+        # Split on \item; drop the empty head before the first \item.
+        raw_items = re.split(r"\\item\b", inner)[1:]
+        lines: list[str] = []
+        for i, it in enumerate(raw_items, 1):
+            # \item[label] — keep the optional label inline.
+            it = re.sub(r"^\s*\[([^\]]*)\]", r"\1 ", it)
+            body = " ".join(seg.strip() for seg in it.strip().splitlines() if seg.strip())
+            if not body:
+                continue
+            marker = f"{i}." if kind == "enumerate" else "-"
+            lines.append(f"{marker} {body}")
+        return "\n\n" + "\n".join(lines) + "\n\n" if lines else ""
+
+    prev = None
+    out = text
+    # Repeat until stable so nested environments (inner first) all convert.
+    while prev != out:
+        prev = out
+        out = _LATEX_LIST_RE.sub(_one, out)
+    return out
+
+
 def _fix_math_spacing(html: str) -> str:
     """Replace whitespace after </math> with a non-breaking space entity.
 
@@ -146,6 +186,7 @@ def _para_to_html(text: str, css_class: str) -> str:
     Pandoc's generic <p> wrapper with one that carries the correct Word
     paragraph-style class.
     """
+    text = _latex_lists_to_md(text)
     text = _preprocess_math_spacing(text, "markdown")
     raw = _pandoc(text, _MD_FMT, "html", ["--mathml", "--wrap=none"]).strip()
     raw = _fix_math_spacing(raw)
@@ -165,7 +206,8 @@ def _solution_body_to_html(solution_body: str) -> str:
     <p> and <li> with class="Solution" so Word applies the named style to
     both plain paragraphs and list items.
     """
-    body = _preprocess_math_spacing(solution_body, "markdown")
+    body = _latex_lists_to_md(solution_body)
+    body = _preprocess_math_spacing(body, "markdown")
     raw = _pandoc(body, _MD_FMT, "html", ["--mathml", "--wrap=none"])
     raw = _fix_math_spacing(raw)
     # Annotate every <p> and <li> tag
@@ -178,8 +220,16 @@ def _solution_body_to_html(solution_body: str) -> str:
 # HTML body builder
 # ---------------------------------------------------------------------------
 
-def questions_to_word_html(questions: list[QuizQuestion]) -> str:
-    """Build the CF_HTML body fragment for a list of QuizQuestion objects."""
+def questions_to_word_html(
+    questions: list[QuizQuestion],
+    include_meta: bool = False,
+) -> str:
+    """Build the CF_HTML body fragment for a list of QuizQuestion objects.
+
+    ``include_meta`` — when True, append the BANK_META line in the hidden
+    ``P - Meta`` style *after* the solution (invisible in print, kept for
+    round-tripping). Omitted entirely otherwise.
+    """
     parts: list[str] = []
 
     for q in questions:
@@ -193,9 +243,6 @@ def questions_to_word_html(questions: list[QuizQuestion]) -> str:
         for sub in q.subparts:
             parts.append(_para_to_html(sub, "P-Sub-problem"))
 
-        if q.meta:
-            parts.append(_para_to_html(q.meta, "Problem-Meta"))
-
         parts.append(
             f'<p class="Solution-Title">{_answer_title(q)}</p>'
         )
@@ -203,10 +250,14 @@ def questions_to_word_html(questions: list[QuizQuestion]) -> str:
         # fill-in-the-blank answer keys get their own style so they survive the
         # round trip (a P-Sub-problem here would be read back as an option).
         for b in q.blanks:
-            parts.append(_para_to_html(b, "Blank-Key"))
+            parts.append(_para_to_html(b, "Solution-Key"))
 
         if q.solution_body:
             parts.append(_solution_body_to_html(q.solution_body))
+
+        # Hidden metadata sits last, after the solution.
+        if include_meta and q.meta:
+            parts.append(_para_to_html(q.meta, "P-Meta"))
 
     return "\n".join(parts)
 
@@ -226,7 +277,7 @@ def _answer_title(q: "QuizQuestion") -> str:
 # Clipboard path
 # ---------------------------------------------------------------------------
 
-def quiz_md_to_clipboard(quiz_md: str) -> dict:
+def quiz_md_to_clipboard(quiz_md: str, include_meta: bool = False) -> dict:
     """Parse quiz markdown and write Word-styled HTML to the Windows clipboard.
 
     Returns
@@ -244,7 +295,7 @@ def quiz_md_to_clipboard(quiz_md: str) -> dict:
             "warnings": ["No questions found in the provided quiz markdown."],
         }
 
-    html_body = questions_to_word_html(questions)
+    html_body = questions_to_word_html(questions, include_meta=include_meta)
     cf_html = _make_quiz_cf_html(html_body)
 
     win32clipboard.OpenClipboard()
@@ -271,47 +322,48 @@ _OPTION_LETTERS = "ABCDE"
 def _to_pandoc_custom_style_md(
     questions: list[QuizQuestion],
     include_solutions: bool = True,
+    include_meta: bool = False,
 ) -> str:
     """Render questions as Pandoc extended markdown with custom-style fenced divs.
 
     When Pandoc processes this with --reference-doc=template.docx the fenced-div
     style names map to these named paragraph styles in the template:
 
-      "P - Problem"     ← problem stem (prefixed with its 1-based number)
-      "P - Sub-problem" ← each answer option / essay sub-part
-      "Problem - Meta"  ← BANK_META block
+      "P - Problem"     ← problem stem (auto-numbered by the template's list)
+      "P - Sub-problem" ← each answer option / essay sub-part (auto-lettered)
       "Solution - Title"← Jawaban line
-      "Blank - Key"     ← FITB answer-key lines
+      "Solution - Key"  ← FITB answer-key lines
       "Solution"        ← solution body paragraphs
+      "P - Meta"        ← BANK_META block (hidden style, opt-in, after solution)
 
-    Without a reference doc Pandoc creates the styles from scratch (no special
-    formatting, but math still converts to OMML correctly).
+    Numbering is produced by the template's style-linked list, so **no** number
+    is baked into the text.  Without a reference doc Pandoc creates the styles
+    from scratch (no numbering / formatting, but math still converts to OMML).
 
     include_solutions:
-        When False, emit a clean worksheet: stems + options only, with the answer
-        title, FITB keys, worked solution *and* BANK_META omitted.
+        When False, emit a clean worksheet: stems + options only (answer title,
+        FITB keys, worked solution and metadata all omitted).
+    include_meta:
+        When True (and solutions are included), append the hidden BANK_META line
+        after the solution.  Omitted otherwise.
     """
     blocks: list[str] = []
 
-    for i, q in enumerate(questions, 1):
-        num = q.number or i
+    for q in questions:
         if q.stem:
-            blocks.append(
-                f'::: {{custom-style="P - Problem"}}\n{num}\\. {q.stem}\n:::'
-            )
+            stem = _latex_lists_to_md(q.stem)
+            blocks.append(f'::: {{custom-style="P - Problem"}}\n{stem}\n:::')
 
         for opt in q.options:
+            opt = _latex_lists_to_md(opt)
             blocks.append(f'::: {{custom-style="P - Sub-problem"}}\n{opt}\n:::')
         for sub in q.subparts:
+            sub = _latex_lists_to_md(sub)
             blocks.append(f'::: {{custom-style="P - Sub-problem"}}\n{sub}\n:::')
 
         if not include_solutions:
-            # Worksheet mode: stem + options only. BANK_META is internal
-            # classification, so it is omitted along with the answer key.
+            # Worksheet mode: stem + options only.
             continue
-
-        if q.meta:
-            blocks.append(f'::: {{custom-style="Problem - Meta"}}\n{q.meta}\n:::')
 
         blocks.append(
             f'::: {{custom-style="Solution - Title"}}\n'
@@ -320,14 +372,19 @@ def _to_pandoc_custom_style_md(
         )
 
         for b in q.blanks:
-            blocks.append(f'::: {{custom-style="Blank - Key"}}\n{b}\n:::')
+            blocks.append(f'::: {{custom-style="Solution - Key"}}\n{b}\n:::')
 
         if q.solution_body:
-            # Wrap each non-empty paragraph in a Solution div
-            for para in re.split(r"\n{2,}", q.solution_body):
+            # Wrap each non-empty paragraph in a Solution div.
+            body = _latex_lists_to_md(q.solution_body)
+            for para in re.split(r"\n{2,}", body):
                 para = para.strip()
                 if para:
                     blocks.append(f'::: {{custom-style="Solution"}}\n{para}\n:::')
+
+        # Hidden metadata sits last, after the solution.
+        if include_meta and q.meta:
+            blocks.append(f'::: {{custom-style="P - Meta"}}\n{q.meta}\n:::')
 
     return "\n\n".join(blocks)
 
@@ -337,6 +394,7 @@ def quiz_md_to_docx_bytes(
     reference_doc: str | None = None,
     include_solutions: bool = True,
     use_template: bool = True,
+    include_meta: bool = False,
 ) -> bytes:
     """Convert quiz markdown to DOCX bytes.
 
@@ -346,8 +404,8 @@ def quiz_md_to_docx_bytes(
         Quiz markdown in astro-dev-id format.
     reference_doc:
         Path to a .docx template that defines the paragraph styles
-        "P - Problem", "P - Sub-problem", "Solution - Title", "Blank - Key",
-        "Problem - Meta" and "Solution". If None and ``use_template`` is True,
+        "P - Problem", "P - Sub-problem", "Solution - Title", "Solution - Key",
+        "P - Meta" and "Solution". If None and ``use_template`` is True,
         the bundled ``assets/quiz-template.docx`` is used. Pass an explicit path
         to override it.
     include_solutions:
@@ -355,6 +413,8 @@ def quiz_md_to_docx_bytes(
     use_template:
         When False, skip the reference doc entirely (Pandoc default styling;
         math still converts to OMML). Ignored when ``reference_doc`` is given.
+    include_meta:
+        When True, append the hidden BANK_META line after each solution.
 
     Returns
     -------
@@ -365,7 +425,11 @@ def quiz_md_to_docx_bytes(
     if not questions:
         raise ValueError("No questions found in the provided quiz markdown.")
 
-    pandoc_md = _to_pandoc_custom_style_md(questions, include_solutions=include_solutions)
+    pandoc_md = _to_pandoc_custom_style_md(
+        questions,
+        include_solutions=include_solutions,
+        include_meta=include_meta,
+    )
 
     # Resolve the reference doc: explicit path > bundled default (unless opted out).
     ref: str | None = reference_doc

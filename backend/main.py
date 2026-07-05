@@ -359,15 +359,16 @@ def export_docx(body: dict):
 def quiz_to_clipboard(body: dict):
     """Convert quiz markdown to Word clipboard (CF_HTML with paragraph styles).
 
-    Body: ``{"text": "...", "preset": "astro_dev_id"}``
+    Body: ``{"text": "...", "preset": "astro_dev_id", "include_meta": false}``
     """
     from quiz_to_word import quiz_md_to_clipboard
 
     text = body.get("text", "").strip()
+    include_meta = bool(body.get("include_meta", False))
     if not text:
         return JSONResponse(status_code=400, content={"error": "No text provided"})
     try:
-        result = quiz_md_to_clipboard(text)
+        result = quiz_md_to_clipboard(text, include_meta=include_meta)
         return result
     except FileNotFoundError:
         return JSONResponse(
@@ -391,6 +392,7 @@ def quiz_to_docx(
     text: str = Form(""),
     include_solutions: bool = Form(True),
     use_template: bool = Form(True),
+    include_meta: bool = Form(False),
     filename: str = Form("quiz"),
     template: UploadFile | None = File(None),
 ):
@@ -402,6 +404,8 @@ def quiz_to_docx(
     - ``include_solutions`` — ``false`` → clean worksheet
     - ``use_template``      — ``false`` → Pandoc default styling (ignored when a
                               ``template`` file is uploaded)
+    - ``include_meta``      — ``true`` → append the hidden BANK_META line after
+                              each solution (off by default)
     - ``filename``          — optional download name
     - ``template``          — optional uploaded .docx whose named paragraph styles
                               override the bundled template
@@ -437,6 +441,7 @@ def quiz_to_docx(
             reference_doc,
             include_solutions=include_solutions,
             use_template=use_template,
+            include_meta=include_meta,
         )
     except ValueError as e:
         return JSONResponse(status_code=400, content={"error": str(e)})

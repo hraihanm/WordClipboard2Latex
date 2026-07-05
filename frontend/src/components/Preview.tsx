@@ -240,16 +240,19 @@ function renderLatex(container: HTMLDivElement, latex: string) {
 // MathPix-style LaTeX pre-passes (mirrors latex-preprocessor.ts in astro-dev-id)
 // ---------------------------------------------------------------------------
 
-/** Pass 1: text-mode \textbf / \emph → bold/italic; {,} → , outside math */
+// Captures math regions Pass 1 must not modify ($$, $, bare math envs)
+const _MATH_REGION_RE =
+  /(\$\$[\s\S]*?\$\$|\$[^$\n]+?\$|\\begin\{(?:equation|align|alignat|gather|gathered|aligned|alignedat|multline|split|cases|dcases|rcases|array|darray|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix|smallmatrix|CD)\*?\}[\s\S]*?\\end\{(?:equation|align|alignat|gather|gathered|aligned|alignedat|multline|split|cases|dcases|rcases|array|darray|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix|smallmatrix|CD)\*?\})/;
+
+/** Pass 1: text-mode \textbf / \emph → bold/italic (skips math regions) */
 function applyTextModeCommands(text: string): string {
-  let out = text
-    .replace(/\\textbf\{([^{}]*)\}/g, '**$1**')
-    .replace(/\\emph\{([^{}]*)\}/g, '*$1*')
-    .replace(/\\text\{([^{}]*)\}/g, '$1');
-  out = out.split(/(\$\$[\s\S]*?\$\$|\$[^$\n]+?\$)/).map((p, i) =>
-    i % 2 === 0 ? p.replace(/\{,\}/g, ',') : p
-  ).join('');
-  return out;
+  return text.split(_MATH_REGION_RE).map((part, i) => {
+    if (i % 2 !== 0) return part;
+    return part
+      .replace(/\\textbf\{([^{}]*)\}/g, '**$1**')
+      .replace(/\\emph\{([^{}]*)\}/g, '*$1*')
+      .replace(/\\text\{([^{}]*)\}/g, '$1');
+  }).join('');
 }
 
 const ENUMERATE_TYPE: Record<string, string> = {
